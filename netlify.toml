@@ -1,0 +1,48 @@
+# Configurazione Netlify
+#
+# Senza questo file Netlify tratta il progetto come un sito statico e serve
+# un 404 su ogni indirizzo: questa app ha componenti che girano sul server
+# (lettura dei cookie di sessione, server action del login, proxy.ts), quindi
+# ha bisogno di un runtime che esegua codice a ogni richiesta.
+#
+# Il plugin @netlify/plugin-nextjs fa esattamente questo: traduce l'output di
+# `next build` in funzioni serverless Netlify.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# ---------------------------------------------------------------------------
+# VARIABILI D'AMBIENTE — da inserire NEL PANNELLO NETLIFY, non qui.
+#
+#   Site configuration → Environment variables → Add a variable
+#     NEXT_PUBLIC_SUPABASE_URL
+#     NEXT_PUBLIC_SUPABASE_ANON_KEY
+#
+# I valori sono gli stessi del tuo .env.local, che resta sul tuo computer e
+# non viaggia con il codice.
+#
+# Scriverli qui dentro significherebbe metterli su GitHub. Non farlo.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# NOTA SU proxy.ts
+#
+# In Next 16 il vecchio middleware.ts si chiama proxy.ts e gira
+# obbligatoriamente sul runtime Node.js: l'edge runtime non è supportato.
+# Netlify esegue storicamente il middleware Next come edge function, e al
+# momento della scrittura non è confermato che il plugin gestisca proxy.ts.
+#
+# Per questo la protezione delle rotte NON dipende solo dal proxy: ogni
+# pagina riservata chiama `richiediAccesso()` (lib/supabase/accesso.ts), che
+# verifica la sessione lato server e reindirizza a /login. Se il proxy non
+# gira, l'app resta comunque protetta.
+#
+# Dopo il primo deploy, la prova è in README.md §"Pubblicazione".
+# ---------------------------------------------------------------------------

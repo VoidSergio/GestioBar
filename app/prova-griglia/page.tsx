@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { richiediAccesso } from '@/lib/supabase/accesso';
 import { ProvaGriglia } from './prova-griglia';
 
 export const metadata: Metadata = { title: 'Prova griglia — Gestionale Bar' };
@@ -12,6 +13,7 @@ export const metadata: Metadata = { title: 'Prova griglia — Gestionale Bar' };
  *
  * Verrà eliminata quando arriverà il vero dettaglio conto (T-12).
  */
-export default function PaginaProvaGriglia() {
+export default async function PaginaProvaGriglia() {
+  await richiediAccesso();
   return <ProvaGriglia />;
 }

@@ -11,7 +11,7 @@ Gestionale per un bar, mobile-first, in italiano. Serve a sapere con certezza **
 
 Stack: Next.js 16 (App Router, Turbopack) + TypeScript strict + Supabase + TanStack Query + Tailwind 4.
 
-**Stato:** Fase 0 chiusa, T-06 completato. Database attivo con 59 prodotti, autenticazione funzionante, modulo denaro con 22 test. Il prossimo task è **T-07** in `docs/05-ROADMAP.md`.
+**Stato:** Fase 0 chiusa. Fatti T-06 (accesso), T-07 (cache offline e indicatore di rete), T-10 (griglia prodotti). Database attivo con 59 prodotti, 31 test verdi. Il prossimo task è **T-08** in `docs/05-ROADMAP.md`.
 
 Note operative: `middleware.ts` non esiste — in Next 16 si chiama `proxy.ts`. I tipi delle righe in `lib/supabase/tipi.ts` devono restare `type` e non `interface`, altrimenti l'inferenza di supabase-js collassa su `never`.
 

@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { configurazionePresente } from '@/lib/supabase/configurazione';
 import { supabaseServer } from '@/lib/supabase/server';
+import { richiediAccesso } from '@/lib/supabase/accesso';
 import { formatEuro } from '@/lib/dominio/denaro';
 import { PulsanteEsci } from '@/components/shell/pulsante-esci';
+import { IndicatoreSync } from '@/components/shell/indicatore-sync';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,6 +112,11 @@ async function controllaDatabase(): Promise<Diagnostica> {
 
 export default async function Home() {
   const configurato = configurazionePresente();
+
+  // Seconda linea di difesa, indipendente da proxy.ts: vedi il commento
+  // in lib/supabase/accesso.ts.
+  if (configurato) await richiediAccesso();
+
   const { esiti, nome, ruolo, email } = configurato
     ? await controllaDatabase()
     : { esiti: [], nome: null, ruolo: null, email: null };
@@ -120,7 +127,10 @@ export default async function Home() {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col gap-6 px-5 py-8 pb-sicura">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Gestionale Bar</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">Gestionale Bar</h1>
+            <IndicatoreSync />
+          </div>
           <p className="mt-1 text-sm text-[var(--color-testo-tenue)]">
             {nome ? `Ciao ${nome}` : (email ?? 'Impalcatura del progetto')}
             {ruolo && ` · ${ruolo}`}

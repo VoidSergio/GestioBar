@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { GrigliaProdotti } from '@/components/conto/griglia-prodotti';
+import { IndicatoreSync } from '@/components/shell/indicatore-sync';
 import { formatEuro, sommaCentesimi } from '@/lib/dominio/denaro';
 import { nuovoId } from '@/lib/utils';
 
@@ -53,7 +54,10 @@ export function ProvaGriglia() {
     <main className="flex h-dvh flex-col">
       <header className="flex items-center justify-between gap-3 px-4 py-3">
         <div>
-          <h1 className="text-lg font-bold">Prova griglia</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-lg font-bold">Prova griglia</h1>
+            <IndicatoreSync />
+          </div>
           <p className="text-xs text-[var(--color-testo-tenue)]">
             Conto finto, niente viene salvato
             {ultimoTap !== null && ` · ultimo tap ${ultimoTap} ms`}

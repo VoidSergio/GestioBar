@@ -126,6 +126,39 @@ La direzione delle dipendenze va rispettata: `app → components → hooks → s
 
 ---
 
+## Pubblicazione (Netlify)
+
+Il file `netlify.toml` è già nel progetto. Senza di lui Netlify tratta l'app come un sito statico e restituisce **404 su ogni indirizzo**: qui ci sono componenti che girano sul server, e serve un runtime che esegua codice a ogni richiesta.
+
+**Una cosa va fatta a mano, e senza di quella il sito non funziona:**
+
+Netlify → **Site configuration → Environment variables → Add a variable**, e inserisci le due variabili che hai in `.env.local`:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+Quel file resta sul tuo computer e non viaggia con il codice — è escluso da Git apposta. Se le variabili mancano, il sito si costruisce ma non trova il database.
+
+Poi: **Deploys → Trigger deploy → Clear cache and deploy site**.
+
+### Le due prove da fare dopo il deploy
+
+**1. Le rotte sono protette.** Apri l'indirizzo Netlify in una finestra anonima. Devi finire su `/login`. Prova anche `/prova-griglia` direttamente: stessa cosa.
+
+Se invece vedi la home senza aver fatto l'accesso, dimmelo: significa che qualcosa non ha funzionato e va guardato subito.
+
+**2. Il login funziona.** Entra con le tue credenziali. Devi vedere "Ciao [nome] · titolare" e i pallini verdi.
+
+### Perché la protezione è doppia
+
+`proxy.ts` blocca le richieste prima che la pagina venga costruita. Ma in Next 16 quel file gira obbligatoriamente sul runtime Node.js, e non tutti gli host eseguono quel gancio allo stesso modo — Netlify usa storicamente le edge function per il middleware Next.
+
+Per questo ogni pagina riservata chiama anche `richiediAccesso()` (in `lib/supabase/accesso.ts`), che verifica la sessione lato server. **Se il proxy non gira, l'app resta comunque protetta.**
+
+Non è ridondanza inutile: è il motivo per cui la protezione non ha un unico punto di rottura. Vale la pena tenerla anche se un domani si cambia host.
+
+---
+
 ## Provare l'app dal telefono
 
 Sulla stessa rete wifi, `npm run dev` espone l'indirizzo locale del computer (tipo `http://192.168.1.20:3000`). Aprilo dal telefono: è l'unico modo serio di valutare le schermate, perché è lì che l'app verrà usata.

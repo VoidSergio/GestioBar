@@ -11,7 +11,7 @@ Versioni effettivamente installate e verificate (build, test e lint passano):
 
 | Livello | Scelta | Versione | Perché |
 |---|---|---|---|
-| Framework | **Next.js** (App Router, Turbopack) | 16.3 | React con routing e build già risolti; deploy su Vercel in un click |
+| Framework | **Next.js** (App Router, Turbopack) | 16.3 | React con routing e build già risolti, ecosistema ampio |
 | Linguaggio | **TypeScript** strict | 5.9 | Il compilatore intercetta gli errori sui centesimi e sugli id prima che diventino bug contabili |
 | Database | **Supabase** (Postgres) | supabase-js 2.112, ssr 0.12 | Vedi DEC-01. Include auth e realtime |
 | Stato server | **TanStack Query** | 5.101 | Cache, retry, invalidazione e aggiornamento ottimistico: è il pezzo che rende l'app veloce anche su rete lenta |
@@ -19,7 +19,7 @@ Versioni effettivamente installate e verificate (build, test e lint passano):
 | Stile | **Tailwind CSS** | 4.3 | Velocità di sviluppo, controllo preciso dei bersagli di tocco |
 | Validazione | **Zod** | 4.4 | Un solo punto di verità per le forme dei dati |
 | Test | **Vitest** | 4.1 | Veloce, senza configurazione, gira sui moduli di dominio |
-| Hosting | **Vercel** | — | Gratuito per questo carico, integrato con Next.js |
+| Hosting | **Netlify** | plugin-nextjs 5.15 | Il repository era già collegato lì; vedi §11 per le conseguenze |
 
 ### Due scelte cambiate rispetto alla prima stesura
 
@@ -81,21 +81,24 @@ gestionale-bar/
 │   │   └── estratto-conto.tsx
 │   └── shell/
 │       ├── pulsante-esci.tsx       ✅
-│       ├── barra-navigazione.tsx   # tab bar in basso
-│       ├── indicatore-sync.tsx     # stato coda offline
-│       └── intestazione.tsx
+│       ├── provider-dati.tsx       ✅ TanStack Query + ripristino cache
+│       ├── indicatore-sync.tsx     ✅ pallino verde/ambra/rosso
+│       ├── barra-navigazione.tsx   # tab bar in basso              [T-11]
+│       └── intestazione.tsx        #                                [T-11]
 │
 ├── lib/
 │   ├── supabase/
 │   │   ├── client.ts               ✅ client lato browser
 │   │   ├── server.ts               ✅ client lato server (SSR)
 │   │   ├── configurazione.ts       ✅ lettura .env con errori in italiano
-│   │   ├── sessione.ts             ✅ rinnovo sessione e protezione rotte
+│   │   ├── sessione.ts             ✅ rinnovo sessione (proxy)
+│   │   ├── accesso.ts              ✅ richiediAccesso() per le pagine
 │   │   └── tipi.ts                 ✅ scritti a mano, rigenerabili da Supabase CLI
 │   ├── offline/
-│   │   ├── db.ts                   # schema IndexedDB
-│   │   ├── coda.ts                 # coda di scrittura
-│   │   └── sync.ts                 # motore di sincronizzazione
+│   │   ├── db.ts                   ✅ schema IndexedDB (cache + coda)
+│   │   ├── cache-query.ts          ✅ salva/ripristina la cache
+│   │   ├── coda.ts                 # coda di scrittura              [T-09]
+│   │   └── sync.ts                 # motore di sincronizzazione     [T-09]
 │   ├── dominio/
 │   │   ├── denaro.ts               ✅ centesimi, parsing, formattazione
 │   │   ├── denaro.test.ts          ✅ 22 test
@@ -103,12 +106,12 @@ gestionale-bar/
 │   │   ├── crediti.ts              # calcoli su saldo e anzianità
 │   │   └── schemi.ts               # schemi Zod
 │   ├── hooks/
-│   │   ├── use-conti-aperti.ts
-│   │   ├── use-conto.ts
-│   │   ├── use-clienti.ts
-│   │   ├── use-crediti.ts
-│   │   ├── use-prodotti.ts
-│   │   └── use-stato-rete.ts
+│   │   ├── use-prodotti.ts         ✅ griglia dal database
+│   │   ├── use-stato-rete.ts       ✅ online/offline
+│   │   ├── use-clienti.ts          #                                [T-08]
+│   │   ├── use-conti-aperti.ts     #                                [T-11]
+│   │   ├── use-conto.ts            #                                [T-12]
+│   │   └── use-crediti.ts          #                                [T-15]
 │   └── utils.ts
 │
 ├── supabase/
@@ -128,7 +131,9 @@ gestionale-bar/
 │   └── icone/                      ✅ 192, 512, maskable, apple-touch
 │
 ├── docs/                           ✅ i sette documenti di progetto
+├── .env.local                      ✅ (solo locale, mai su GitHub)
 ├── proxy.ts                        ✅ ex middleware.ts (rinominato in Next 16)
+├── netlify.toml                    ✅ senza questo file: 404 ovunque
 ├── .env.local.example              ✅
 ├── next.config.ts                  ✅
 ├── vitest.config.mts               ✅
@@ -380,11 +385,20 @@ La chiave `anon` è pubblica per progetto: è sicura **solo perché RLS è attiv
 
 ## 11. Deploy
 
-1. Repository su GitHub (privato).
-2. Progetto su Vercel collegato al repository.
-3. Le due variabili `NEXT_PUBLIC_*` inserite nelle impostazioni Vercel.
-4. Ogni push su `main` fa il deploy automatico.
-5. L'app si installa sul telefono aprendo l'indirizzo e scegliendo "Aggiungi a schermata Home".
+**Host scelto: Netlify.** I documenti indicavano Vercel; la scelta è cambiata perché il repository era già collegato a Netlify.
+
+1. Repository su GitHub (privato): `VoidSergio/GestioBar`
+2. `netlify.toml` nel progetto — senza, Netlify serve il sito come statico e restituisce 404 ovunque
+3. Le due variabili `NEXT_PUBLIC_*` vanno inserite **nel pannello Netlify**, non in un file
+4. Ogni push su `main` fa il deploy
+
+### La protezione delle rotte è doppia, di proposito
+
+`proxy.ts` (ex `middleware.ts`) intercetta le richieste prima che la pagina venga costruita. In Next 16 gira **obbligatoriamente sul runtime Node.js**: l'edge runtime non è supportato e non è configurabile. Netlify esegue storicamente il middleware Next come edge function, e non è confermato che il loro plugin gestisca già `proxy.ts`.
+
+Invece di scommettere, ogni pagina riservata chiama anche `richiediAccesso()` in `lib/supabase/accesso.ts`, che verifica la sessione lato server e reindirizza a `/login`. Se il proxy non gira, l'app resta protetta.
+
+Sarebbe un controllo ridondante su un host che esegue il proxy correttamente. È il tipo di ridondanza che si tiene: costa una chiamata già presente in pagina, e toglie un punto unico di rottura che riguarda l'accesso ai dati dei clienti.
 
 **Ambienti:** un solo progetto Supabase in Fase 1 è accettabile, ma appena ci sono dati veri va creato un secondo progetto per le prove. Provare una migrazione sui dati di produzione è il modo classico di perdere il credito di sei mesi.
 

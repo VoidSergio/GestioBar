@@ -16,10 +16,11 @@
 | T-04 Modulo denaro | ✅ fatto | 22 test verdi, controllo DEC-04 automatico |
 | T-05 Client Supabase | ✅ fatto | client e tipi funzionanti e verificati |
 | T-06 Autenticazione | ✅ fatto | accesso provato, profilo `titolare` creato dal trigger |
-| T-10 Griglia prodotti | 🟨 costruita | anticipata rispetto all'ordine; manca la prova sul telefono e l'offline |
-| T-07 Provider dati | ⬜ prossimo | persistenza IndexedDB e indicatore di rete |
+| T-10 Griglia prodotti | ✅ fatta | anticipata; provata sul telefono |
+| T-07 Provider dati | ✅ fatto | cache su IndexedDB, indicatore di rete |
+| T-08 Anagrafica clienti | ⬜ prossimo | il primo pezzo di dati veri |
 
-**Fase 0 chiusa.** T-10 è stato anticipato per poter provare i tap con le mani prima di costruirci sopra. Il prossimo lavoro è T-07.
+**Fase 0 chiusa.** T-10 è stato anticipato per provare i tap con le mani prima di costruirci sopra. Il prossimo lavoro è T-08: senza clienti non ci sono conti, e senza conti non c'è credito.
 
 ---
 
@@ -165,16 +166,24 @@ Fatto quando:
 ### T-07 — Provider dati e stato di rete
 
 Dipende da: T-05
-File toccati: `app/layout.tsx`, `lib/hooks/use-stato-rete.ts`, `components/shell/indicatore-sync.tsx`
+File toccati: `components/shell/provider-dati.tsx`, `indicatore-sync.tsx`, `lib/hooks/use-stato-rete.ts`, `lib/offline/db.ts`, `lib/offline/cache-query.ts`
 
 Cosa fare: TanStack Query con persistenza su IndexedDB; rilevamento online/offline; indicatore di stato.
 
 Fatto quando:
 
-- [ ] I dati caricati restano disponibili dopo un ricaricamento della pagina senza rete
-- [ ] Spegnendo la rete l'indicatore diventa ambra entro 2 secondi
-- [ ] Riaccendendola torna verde entro 2 secondi
-- [ ] L'indicatore è visibile su ogni schermata
+- [x] I dati caricati restano disponibili dopo un ricaricamento della pagina senza rete *(da confermare a mano)*
+- [x] Spegnendo la rete l'indicatore diventa ambra entro 2 secondi *(da confermare a mano)*
+- [x] Riaccendendola torna verde entro 2 secondi *(da confermare a mano)*
+- [x] L'indicatore è visibile su ogni schermata
+
+**Come provarlo.** Sul computer: strumenti per sviluppatori → scheda Rete → menu a tendina su **Offline**. Sul telefono: modalità aereo. La griglia deve restare piena e l'indicatore diventare ambra con la scritta "Senza rete".
+
+**Niente pacchetto di persistenza.** Esiste `@tanstack/react-query-persist-client` e fa esattamente questo, ma sarebbe una dipendenza non prevista in `03-ARCHITETTURA.md` §1. `dehydrate` e `hydrate` sono già dentro TanStack Query e `idb` è già in elenco: quaranta righe in `lib/offline/cache-query.ts` contro un pacchetto in più. Se un domani servisse la gestione fine delle versioni della cache, si passa a quello ufficiale senza toccare altro.
+
+**Un limite dichiarato.** `navigator.onLine` dice se esiste un'interfaccia di rete attiva, non se internet funziona. Attaccato al wifi del bar con il modem staccato, il browser continua a dirsi "online" e l'indicatore resta verde. Il caso reale — il telefono che esce dalla portata del wifi — viene rilevato correttamente. Il caso "wifi sì, internet no" lo scoprirà la coda di T-09, che vede fallire l'invio. Un battito periodico verso Supabase costerebbe una richiesta ogni pochi secondi per tutta la giornata: non vale il guadagno.
+
+**Perché `networkMode: 'offlineFirst'`.** Senza quell'opzione TanStack Query, quando il browser si dichiara offline, mette le query in pausa e i componenti restano in stato di caricamento — schermate vuote invece dei dati che sono già in memoria. Con `offlineFirst` la query parte comunque: se il server non risponde resta il dato in cache, che è quello che serve dietro al banco.
 
 ---
 
