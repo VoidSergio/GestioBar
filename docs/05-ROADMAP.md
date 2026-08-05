@@ -1,0 +1,471 @@
+# Roadmap esecutiva
+
+> Backlog ordinato. Ogni task ha criteri di accettazione verificabili.
+> Pensato per essere eseguito un task alla volta, anche da un agente AI.
+> **Regola:** non si passa al task successivo finché tutti i criteri del precedente non passano.
+
+---
+
+## Stato al 4 agosto 2026
+
+| Task | Stato | Nota |
+|---|---|---|
+| T-01 Progetto Supabase | ✅ fatto | progetto creato, regione Irlanda |
+| T-02 Schema | ✅ fatto | 8 migrazioni eseguite, 59 prodotti e 34 riquadri verificati |
+| T-03 Progetto Next.js | ✅ fatto | build, lint e test passano |
+| T-04 Modulo denaro | ✅ fatto | 22 test verdi, controllo DEC-04 automatico |
+| T-05 Client Supabase | ✅ fatto | client e tipi funzionanti e verificati |
+| T-06 Autenticazione | ✅ fatto | accesso provato, profilo `titolare` creato dal trigger |
+| T-10 Griglia prodotti | 🟨 costruita | anticipata rispetto all'ordine; manca la prova sul telefono e l'offline |
+| T-07 Provider dati | ⬜ prossimo | persistenza IndexedDB e indicatore di rete |
+
+**Fase 0 chiusa.** T-10 è stato anticipato per poter provare i tap con le mani prima di costruirci sopra. Il prossimo lavoro è T-07.
+
+---
+
+## Come si legge un task
+
+```
+### T-xx — Titolo
+Dipende da: T-yy
+File toccati: percorsi
+Cosa fare: descrizione operativa
+Fatto quando:
+  - [ ] criterio verificabile
+```
+
+Un criterio è verificabile se una persona diversa può controllarlo senza chiedere spiegazioni. "L'interfaccia è bella" non è un criterio. "Il riquadro del prodotto misura almeno 100×72 px" lo è.
+
+---
+
+## FASE 0 — Fondamenta (mezza giornata)
+
+### T-01 — Creare il progetto Supabase
+
+Dipende da: nulla
+File toccati: nessuno (operazione sul sito)
+
+Cosa fare: seguire `06-SETUP-SUPABASE.md` §1–§3.
+
+Fatto quando:
+
+- [x] Il progetto esiste e la dashboard si apre
+- [x] URL e chiave `anon` sono in `.env.local`
+- [x] La regione scelta è Europa (Irlanda)
+
+---
+
+### T-02 — Eseguire lo schema Fase 1
+
+Dipende da: T-01
+File toccati: `supabase/migrations/0001_schema.sql` … `0004_listino.sql` (già scritti)
+
+Cosa fare: aprire il SQL Editor di Supabase e incollare i quattro file **in ordine**: `0001_schema`, `0002_viste`, `0003_sicurezza`, `0004_listino`. I file `0005` e `0006` sono Fase 2 e 3: non eseguirli.
+
+Fatto quando:
+
+- [x] Tutte le tabelle di §3 esistono in `public`
+- [x] `select count(*) from prodotti` restituisce **59**
+- [x] `select count(*) from v_griglia_prodotti` restituisce **34**
+- [x] `select * from v_saldo_clienti` gira senza errori (0 righe)
+- [x] RLS risulta attiva su tutte e sette le tabelle
+- [x] I file `.sql` sono nel repository e riproducono il database da zero
+
+**Correzioni successive.** Le migrazioni `0007` e `0008` hanno chiuso i problemi segnalati dal Security Advisor: viste che scavalcavano RLS, funzioni con `search_path` modificabile, policy duplicate, funzioni SECURITY DEFINER pubbliche, chiavi esterne senza indice. I file `0001`–`0006` sono stati corretti a monte, quindi un database nuovo non ha bisogno di `0007` e `0008`. Dettagli in `06-SETUP-SUPABASE.md` §4.1.
+
+---
+
+### T-03 — Inizializzare il progetto Next.js
+
+Dipende da: nulla
+File toccati: tutto lo scheletro
+
+Cosa fare: **già fatto.** Resta solo da installare le dipendenze:
+
+```bash
+npm install
+```
+
+Fatto quando:
+
+- [x] `npm run build` completa senza errori né warning di tipo
+- [x] `npm run lint` non segnala nulla
+- [x] `tsconfig.json` ha `"strict": true` e `noUncheckedIndexedAccess`
+- [x] `.env.local` è in `.gitignore` ed esiste `.env.local.example`
+- [x] `npm run dev` apre l'app senza errori
+- [ ] Il repository è su GitHub, privato
+
+---
+
+### T-04 — Modulo denaro e test
+
+Dipende da: T-03
+File toccati: `lib/dominio/denaro.ts`, `lib/dominio/denaro.test.ts`
+
+Cosa fare: implementare il modulo di `03-ARCHITETTURA.md` §3, con i test.
+
+Fatto quando:
+
+- [x] `parseEuro("1,20")` = 120, `parseEuro("1.20")` = 120, `parseEuro("abc")` = null, `parseEuro("")` = null, `parseEuro("-5")` = null
+- [x] `formatEuro(120)` = "1,20 €", `formatEuro(0)` = "0,00 €", `formatEuro(-500)` = "-5,00 €"
+- [x] `centesimi(1.5)` lancia un'eccezione
+- [x] I 22 test passano con `npm test`
+- [x] `npm run verifica:denaro` conferma una sola divisione per 100, dentro `formatEuro`
+
+L'ultimo criterio va rieseguito a ogni task successivo. È il modo più economico di far rispettare DEC-04.
+
+**Cosa è emerso dai test.** Il formato italiano segue la regola CLDR "min2": senza intervenire, `1200` verrebbe scritto `1200,00 €` e `12000` invece `12.000,00 €`, con il separatore che compare e scompare a seconda della cifra — e con differenze fra versioni di browser. `formatEuro` forza quindi `useGrouping: 'always'`, così il totale del credito si legge allo stesso modo ovunque.
+
+---
+
+### T-05 — Client Supabase e tipi generati
+
+Dipende da: T-02, T-03
+File toccati: `lib/supabase/client.ts`, `server.ts`, `tipi.ts`
+
+Cosa fare: configurare i client browser e server; generare i tipi con `npx supabase gen types typescript --project-id XXX > lib/supabase/tipi.ts`.
+
+Fatto quando:
+
+- [x] `tipi.ts` contiene le sette tabelle e le quattro viste di Fase 1
+- [x] Le query sono tipizzate: leggere un campo inesistente non compila
+- [x] La diagnostica in home legge 59 prodotti e 34 riquadri dal database vero
+
+---
+
+## FASE 1 — Il cuore (l'obiettivo è arrivare qui e usarlo)
+
+### T-06 — Autenticazione
+
+Dipende da: T-05
+File toccati: `proxy.ts`, `lib/supabase/sessione.ts`, `app/login/*`, `components/shell/pulsante-esci.tsx`
+
+Cosa fare: login email/password, protezione delle rotte, sessione lunga.
+
+Fatto quando:
+
+- [x] Un utente non autenticato che apre `/` finisce su `/login`
+- [x] Il login riesce e porta alla home
+- [x] Chiudendo e riaprendo il browser la sessione è ancora attiva
+- [x] Il profilo viene creato automaticamente al primo accesso, con ruolo `titolare` per il primo utente
+- [x] Password sbagliata → messaggio in italiano, non un codice
+- [x] Chi è già autenticato e apre `/login` viene rimandato alla home
+- [x] Dopo il login si torna alla pagina che si stava cercando di aprire
+
+**Due cose imparate scrivendolo.**
+
+*In Next 16 `middleware.ts` è deprecato*: il file si chiama `proxy.ts` ed esporta una funzione `proxy`. Il vecchio nome funziona ancora ma stampa un avviso a ogni build.
+
+*I tipi delle righe devono essere `type`, non `interface`.* Con le interface l'inferenza di supabase-js collassa silenziosamente su `never`: `select()` compila, ma leggere un campo dà "Property 'nome' does not exist on type 'never'". Il motivo è che un'interface non è assegnabile a `Record<string, unknown>` — potrebbe essere estesa dopo la dichiarazione, quindi TypeScript non le dà una index signature implicita. Un type alias sì. Serve anche `Relationships: []` su ogni tabella e vista.
+
+*Sulla durata della sessione:* i 30 giorni non si impostano nel codice. Il token di accesso dura un'ora e viene rinnovato in silenzio dal `proxy.ts` a ogni richiesta; quanto a lungo resti collegato dipende dalla scadenza del refresh token, che si configura su Supabase in **Authentication → Sessions**. Il valore predefinito va bene, ma è lì che si cambia.
+
+---
+
+### T-07 — Provider dati e stato di rete
+
+Dipende da: T-05
+File toccati: `app/layout.tsx`, `lib/hooks/use-stato-rete.ts`, `components/shell/indicatore-sync.tsx`
+
+Cosa fare: TanStack Query con persistenza su IndexedDB; rilevamento online/offline; indicatore di stato.
+
+Fatto quando:
+
+- [ ] I dati caricati restano disponibili dopo un ricaricamento della pagina senza rete
+- [ ] Spegnendo la rete l'indicatore diventa ambra entro 2 secondi
+- [ ] Riaccendendola torna verde entro 2 secondi
+- [ ] L'indicatore è visibile su ogni schermata
+
+---
+
+### T-08 — Anagrafica clienti
+
+Dipende da: T-06, T-07
+File toccati: `app/clienti/*`, `lib/hooks/use-clienti.ts`, `components/clienti/ricerca-cliente.tsx`
+
+Cosa fare: elenco, ricerca, creazione, modifica.
+
+Fatto quando:
+
+- [ ] La ricerca filtra su nome e soprannome mentre si digita, senza ricaricare
+- [ ] Si crea un cliente con il solo nome (soprannome e telefono facoltativi)
+- [ ] Un nome vuoto o di soli spazi viene rifiutato con messaggio chiaro
+- [ ] L'elenco mostra il saldo accanto a ogni nome
+- [ ] Con 0 clienti compare il messaggio guida di `04-UX-MOBILE.md` §10
+- [ ] Funziona offline in lettura
+
+---
+
+### T-09 — Coda offline
+
+Dipende da: T-07
+File toccati: `lib/offline/db.ts`, `coda.ts`, `sync.ts`
+
+Cosa fare: implementare il contratto di `03-ARCHITETTURA.md` §4.3.
+
+Fatto quando:
+
+- [ ] Un'operazione creata offline persiste dopo la chiusura del browser
+- [ ] Al ritorno della rete le operazioni partono in ordine di creazione
+- [ ] Un errore di rete fa ritentare con attesa crescente (1s, 2s, 4s… max 60s)
+- [ ] Un errore di dati mette l'operazione in `fallita` senza bloccare le indipendenti
+- [ ] Inviare due volte lo stesso `opId` produce **una sola riga** nel database
+- [ ] L'indicatore mostra il numero di operazioni in coda
+
+Questo è il task più delicato del progetto. Vale la pena scriverne i test prima del codice.
+
+---
+
+### T-10 — Griglia prodotti con varianti
+
+Dipende da: T-05
+File toccati: `components/conto/griglia-prodotti.tsx`, `lib/hooks/use-prodotti.ts`
+
+File toccati: `components/conto/griglia-prodotti.tsx`, `pannello-varianti.tsx`, `lib/dominio/listino.ts`, `lib/hooks/use-prodotti.ts`, `app/prova-griglia/*`
+
+Cosa fare: griglia a 3 colonne da `v_griglia_prodotti`, filtro categorie, pannello varianti.
+
+Fatto quando:
+
+- [x] Compaiono 34 riquadri, uno per `nome_base`
+- [x] I prodotti con più varianti mostrano il segno ▾
+- [x] Tap breve su un riquadro con varianti sceglie la variante `normale`, o la meno costosa se `normale` non esiste (birre, vini)
+- [x] Tap sul ▾ apre il pannello con tutte le varianti e i rispettivi prezzi
+- [x] Ogni riquadro misura almeno 100×72 px *(vedi nota)*
+- [x] I preferiti compaiono per primi
+- [ ] Con il filtro "Tutti" i primi 9 riquadri sono visibili senza scorrere su uno schermo da 6 pollici *(da verificare sul telefono)*
+- [ ] Funziona completamente offline *(rinviato a T-07: serve la persistenza su IndexedDB)*
+
+**Tre annotazioni oneste.**
+
+*Le dimensioni dei riquadri dipendono dallo schermo.* Con tre colonne, 8 px di spaziatura e 8 px di margine: su 360 px di larghezza il riquadro è ~109 px, su 390 px è ~119. Su un iPhone SE di prima generazione (320 px) scende a **96 px**, quattro sotto il minimo dichiarato. Accettato: sotto i 360 px oggi c'è una minoranza trascurabile di telefoni, e ridurre a due colonne costringerebbe a scorrere per raggiungere il cappuccino.
+
+*Il pulsante ▾ è 44×44 px, non 56.* È una violazione consapevole della regola di `04-UX-MOBILE.md` §1. Il motivo: il ▾ sta nell'angolo del riquadro, e a 56 px occuperebbe più della metà della superficie utile, moltiplicando i tap sbagliati sull'azione **più** frequente — quella breve. Il compromesso è che la stessa funzione si raggiunge anche con una pressione prolungata sul riquadro intero. Da riesaminare nel collaudo T-18: se il barista apre il pannello per sbaglio, il disegno va cambiato.
+
+*La logica sta in `lib/dominio/listino.ts`, non nell'hook.* Scelta della variante, nome completo e ordine delle categorie sono funzioni pure e hanno 9 test. Nell'hook resta solo la query. È la regola di dipendenza di `CLAUDE.md`: le cose che non devono sbagliare vivono dove si possono testare senza montare React.
+
+---
+
+### T-11 — Apertura conto
+
+Dipende da: T-08, T-09
+File toccati: `app/page.tsx`, `app/conto/[id]/page.tsx`
+
+Cosa fare: home con conti aperti, pannello **+**, creazione conto.
+
+Fatto quando:
+
+- [ ] La home elenca i conti aperti con cliente, totale e tempo trascorso
+- [ ] Il **+** apre il pannello con "Banco" in cima e i clienti frequenti sotto
+- [ ] I frequenti sono ordinati per numero di conti negli ultimi 30 giorni
+- [ ] Accanto a ogni cliente si vede il suo saldo
+- [ ] Selezionare un cliente che ha già un conto aperto porta a quel conto, senza errori
+- [ ] Da "Nuovo cliente" si crea e si apre il conto in un solo passaggio
+- [ ] Il conto si apre anche offline
+
+---
+
+### T-12 — Righe di conto
+
+Dipende da: T-10, T-11
+File toccati: `components/conto/righe-conto.tsx`, `barra-totale.tsx`
+
+Cosa fare: aggiunta righe con aggiornamento ottimistico, incremento quantità, eliminazione entro 60 s, storno oltre.
+
+Fatto quando:
+
+- [ ] Il tap fa comparire la riga in meno di 100 ms (misurato, non stimato)
+- [ ] Toccare due volte lo stesso prodotto e variante dà `×2` su una riga sola
+- [ ] Prodotti diversi o varianti diverse restano righe separate
+- [ ] La riga mostra la variante per esteso ("Cappuccino decaffeinato")
+- [ ] La **✕** compare per 60 secondi e poi scompare
+- [ ] Dopo i 60 s la pressione prolungata offre "Storna"
+- [ ] La riga stornata resta visibile, barrata, e il totale è corretto
+- [ ] Il totale in basso resta visibile mentre si scorre
+- [ ] Cambiare il prezzo del prodotto nel listino **non** cambia le righe già inserite
+
+---
+
+### T-13 — Chiusura conto: incassa e a credito
+
+Dipende da: T-12
+File toccati: `components/conto/dialog-pagamento.tsx`
+
+Cosa fare: pannello pagamento di `04-UX-MOBILE.md` §6 e azione "A credito".
+
+Fatto quando:
+
+- [ ] "A CREDITO" chiude il conto in un tap, senza conferma, e il saldo del cliente aumenta dell'importo esatto
+- [ ] "A CREDITO" non compare sui conti "Banco"
+- [ ] Il pannello incasso mostra conto corrente, debito precedente e totale dovuto
+- [ ] Le due scorciatoie ("solo il conto" / "tutto") inseriscono l'importo giusto
+- [ ] Un pagamento parziale lascia la differenza a saldo
+- [ ] Un importo superiore al dovuto mostra il resto da dare
+- [ ] Dopo la conferma compare il nuovo saldo per 2 secondi, poi si torna alla home
+- [ ] Il metodo di pagamento viene salvato
+- [ ] Tutto funziona offline
+
+---
+
+### T-14 — Scheda cliente ed estratto conto
+
+Dipende da: T-13
+File toccati: `app/clienti/[id]/page.tsx`, `components/clienti/estratto-conto.tsx`
+
+Cosa fare: saldo, azioni rapide, movimenti raggruppati per giorno.
+
+Fatto quando:
+
+- [ ] Il saldo mostrato coincide con `v_saldo_clienti`
+- [ ] I movimenti sono raggruppati per giorno, dal più recente
+- [ ] I pagamenti appaiono in verde con segno meno
+- [ ] Gli storni sono visibili e barrati
+- [ ] "APRI CONTO" e "INCASSA" funzionano dalla scheda
+- [ ] Il caricamento è paginato (30 movimenti alla volta)
+- [ ] Offline: il saldo si vede, lo storico avvisa che serve la rete
+
+---
+
+### T-15 — Schermata Crediti
+
+Dipende da: T-14
+File toccati: `app/crediti/page.tsx`, `lib/dominio/crediti.ts`
+
+Cosa fare: elenco debitori per anzianità, filtri, azioni chiama/scrivi.
+
+Fatto quando:
+
+- [ ] L'elenco è ordinato per giorni di debito decrescenti
+- [ ] Il colore segue le soglie: verde ≤15 gg, arancione ≤45 gg, rosso oltre
+- [ ] Il totale in cima coincide con la somma dei saldi positivi
+- [ ] I filtri >30gg e >60gg funzionano
+- [ ] "Chiama" apre il dialer con il numero
+- [ ] "Scrivi" apre WhatsApp o SMS con il messaggio precompilato di `04-UX-MOBILE.md` §7, **modificabile prima dell'invio**
+- [ ] Nessun messaggio parte automaticamente
+- [ ] Con 0 debitori compare "Nessuno ti deve soldi 🎉"
+
+---
+
+### T-16 — Gestione listino
+
+Dipende da: T-10
+File toccati: `app/listino/page.tsx`
+
+Cosa fare: modifica prezzi, varianti, preferiti, riordino, disattivazione.
+
+Fatto quando:
+
+- [ ] Il prezzo si modifica in linea e si salva
+- [ ] Cambiando un prezzo compare l'avviso che vale solo per il futuro
+- [ ] Si aggiunge una variante a un prodotto esistente e compare subito nel pannello varianti della griglia
+- [ ] Si aggiunge un prodotto nuovo con la sua categoria
+- [ ] Segnando più di 9 preferiti compare un avviso
+- [ ] Un prodotto si disattiva e sparisce dalla griglia, restando nello storico
+- [ ] Richiede la rete, e lo dice se non c'è
+
+---
+
+### T-17 — PWA e installazione
+
+Dipende da: T-15
+File toccati: `next.config.mjs`, `public/manifest.json`, `public/icone/`
+
+Cosa fare: manifest, icone, service worker, schermata di avvio.
+
+Fatto quando:
+
+- [ ] Su Android compare la richiesta di installazione
+- [ ] Su iPhone "Aggiungi a schermata Home" produce un'app a schermo intero senza barra del browser
+- [ ] L'icona è visibile e nitida su entrambi
+- [ ] Aprendo l'app senza rete si vedono i dati in cache, non una schermata di errore
+- [ ] Lighthouse mobile: PWA installabile, prestazioni ≥ 90
+
+---
+
+### T-18 — Collaudo sul campo
+
+Dipende da: T-17
+File toccati: nessuno
+
+Cosa fare: usare l'app dietro il banco per una settimana, annotando ogni attrito.
+
+Fatto quando:
+
+- [ ] Un caffè a un cliente esistente si registra in 3 tap dalla home, cronometrato
+- [ ] L'app si apre in meno di 1,5 s con la cache calda
+- [ ] Una giornata intera in modalità aereo si sincronizza correttamente al ritorno della rete, senza duplicati e senza perdite
+- [ ] Due dispositivi sullo stesso conto non producono incoerenze
+- [ ] I saldi dell'app coincidono con il foglio di carta tenuto in parallelo
+- [ ] È scritta una lista degli attriti riscontrati, con priorità
+
+**Il foglio di carta va tenuto in parallelo per tutta questa settimana.** È l'unico modo per accorgersi di una divergenza prima che diventi un problema con un cliente.
+
+---
+
+### T-19 — Correzioni post-collaudo
+
+Dipende da: T-18
+
+Cosa fare: risolvere gli attriti emersi, in ordine di frequenza.
+
+Fatto quando:
+
+- [ ] Ogni attrito ad alta priorità è risolto o esplicitamente rinviato con motivazione
+- [ ] Il collaudo si ripete per 3 giorni senza nuovi attriti gravi
+- [ ] **Il foglio di carta viene abbandonato**
+
+Questo è il vero criterio di uscita dalla Fase 1. Non "il codice è finito": "il foglio non serve più".
+
+---
+
+## FASE 2 — Cassa (solo dopo T-19)
+
+| Task | Contenuto | Criterio principale |
+|---|---|---|
+| T-20 | Schema cassa (`02-MODELLO-DATI.md` §4) | Le tabelle esistono, `v_riepilogo_giornata` gira |
+| T-21 | Registrazione incassi al banco senza conto | Un incasso rapido si registra in 2 tap |
+| T-22 | Schermata chiusura giornaliera | La differenza di cassa si calcola da sola e si può annotare la causale |
+| T-23 | Report giornata e settimana | Incassato per metodo, credito concesso, credito rientrato |
+| T-24 | Esportazione CSV | Il file si apre in Excel con gli importi in euro, virgola decimale, e le date leggibili |
+
+---
+
+## FASE 3 — Magazzino (solo dopo che la Fase 2 è stabile)
+
+| Task | Contenuto | Criterio principale |
+|---|---|---|
+| T-30 | Schema magazzino (`02-MODELLO-DATI.md` §5) | `v_giacenze` restituisce le giacenze corrette |
+| T-31 | Anagrafica fornitori e articoli | Si crea un articolo con scorta minima |
+| T-32 | Carichi e rettifiche | Un carico aumenta la giacenza dell'esatta quantità |
+| T-33 | Distinta base prodotto → articolo | Un cappuccino scarica latte e caffè nelle quantità impostate |
+| T-34 | Scarico automatico (disattivabile) | Si può spegnere; da spento le giacenze cambiano solo a mano |
+| T-35 | Alert sotto scorta | Gli articoli sotto scorta compaiono in evidenza |
+| T-36 | Inventario e riconciliazione | Un inventario genera i movimenti di rettifica corretti |
+
+---
+
+## FASE 4 — Multi-utente
+
+| Task | Contenuto | Criterio principale |
+|---|---|---|
+| T-40 | Policy RLS per ruolo | Un barista non legge i report economici, verificato con query dirette |
+| T-41 | Gestione utenti dall'app | Il titolare crea un barista senza aprire Supabase |
+| T-42 | Tracciabilità in interfaccia | Ogni riga mostra chi l'ha inserita |
+| T-43 | Report per operatore | Incassi e conti per barista, per periodo |
+| T-44 | PIN di blocco rapido | L'app si riapre con 4 cifre senza rifare il login |
+
+---
+
+## Ordine di priorità se il tempo è poco
+
+Se dovessi fermarti a metà, questo è l'ordine di valore decrescente:
+
+1. **T-01 → T-15**: senza questi non c'è sistema. T-15 (Crediti) è la ragione per cui il progetto esiste.
+2. **T-17 → T-19**: senza installazione e collaudo il sistema esiste ma non viene usato.
+3. **T-09**: la coda offline. Si può rimandare per iniziare a provare, ma non si può rilasciare senza.
+4. **T-16**: il listino si può gestire da Supabase all'inizio. Scomodo, non bloccante.
+5. Tutto il resto.
+
+---
+
+**Prossimo documento:** `06-SETUP-SUPABASE.md`

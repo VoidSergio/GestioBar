@@ -1,0 +1,26 @@
+node_modules/
+.next/
+out/
+build/
+.DS_Store
+*.pem
+
+# variabili d'ambiente — MAI su GitHub
+.env
+.env.local
+.env*.local
+
+# log
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# vercel
+.vercel
+
+# backup database
+backup_*.sql

@@ -1,0 +1,73 @@
+@import 'tailwindcss';
+
+/*
+  Palette da docs/04-UX-MOBILE.md §11.
+  Tema scuro come predefinito: il bar è spesso in penombra e il turno
+  comincia alle 5 del mattino.
+*/
+@theme {
+  --color-sfondo: #0f172a;
+  --color-superficie: #1e293b;
+  --color-superficie-alta: #334155;
+  --color-testo: #f1f5f9;
+  --color-testo-tenue: #94a3b8;
+  --color-bordo: #334155;
+
+  --color-accento: #22d3ee;
+  --color-accento-scuro: #0891b2;
+  --color-debito: #f87171;
+  --color-positivo: #4ade80;
+  --color-attenzione: #fb923c;
+
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  /* Bersaglio di tocco minimo per le azioni frequenti: mani bagnate, c'è fila. */
+  --spacing-tocco: 3.5rem; /* 56px */
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-sfondo);
+  color: var(--color-testo);
+  font-family: var(--font-sans);
+  /* Le colonne di importi devono allinearsi. */
+  font-variant-numeric: tabular-nums;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+}
+
+/* Niente zoom automatico su iOS quando si tocca un campo: succede sotto i 16px. */
+input,
+select,
+textarea,
+button {
+  font-size: max(1rem, 16px);
+  font-family: inherit;
+}
+
+/* Chi preferisce meno animazioni non deve subirle. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Area sicura sui telefoni con la tacca */
+.pb-sicura {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pt-sicura {
+  padding-top: env(safe-area-inset-top, 0px);
+}

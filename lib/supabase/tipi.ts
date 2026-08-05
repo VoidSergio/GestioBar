@@ -1,0 +1,252 @@
+/**
+ * Tipi del database — Fase 1.
+ *
+ * NOTA: le righe sono `type`, non `interface`, e non è un vezzo.
+ * In TypeScript un'interface non è assegnabile a `Record<string, unknown>`
+ * (non ha una index signature implicita, perché potrebbe essere estesa dopo).
+ * I tipi di supabase-js richiedono proprio quel vincolo: con le interface
+ * l'inferenza collassa su `never` e ogni `select()` smette di essere tipizzato,
+ * senza che nulla lo segnali finché non provi a leggere un campo.
+ *
+ * Scritti a mano seguendo docs/02-MODELLO-DATI.md §3.
+ * Una volta creato il progetto Supabase si possono rigenerare automaticamente:
+ *
+ *   npx supabase gen types typescript --project-id IL_TUO_ID > lib/supabase/tipi.ts
+ *
+ * Finché non lo fai, questi tipi sono la fonte di verità per l'editor.
+ *
+ * Convenzione: i campi che finiscono con `_cent` sono INTERI in centesimi (DEC-04).
+ */
+
+export type Ruolo = 'titolare' | 'barista';
+export type StatoConto = 'aperto' | 'chiuso';
+export type MetodoPagamento = 'contanti' | 'carta' | 'bonifico' | 'altro';
+
+export type Profilo = {
+  id: string;
+  nome: string;
+  ruolo: Ruolo;
+  attivo: boolean;
+  creato_il: string;
+  aggiornato_il: string;
+};
+
+export type Cliente = {
+  id: string;
+  nome: string;
+  soprannome: string | null;
+  telefono: string | null;
+  limite_credito_cent: number | null;
+  note: string | null;
+  attivo: boolean;
+  anonimizzato: boolean;
+  creato_il: string;
+  creato_da: string | null;
+  aggiornato_il: string;
+};
+
+export type Categoria = {
+  id: string;
+  nome: string;
+  colore: string;
+  ordine: number;
+  attiva: boolean;
+  creato_il: string;
+};
+
+export type Prodotto = {
+  id: string;
+  categoria_id: string | null;
+  nome_base: string;
+  variante: string;
+  /** colonna calcolata dal database: nome_base + variante */
+  nome: string;
+  prezzo_cent: number;
+  ordine: number;
+  preferito: boolean;
+  attivo: boolean;
+  creato_il: string;
+  aggiornato_il: string;
+};
+
+export type Conto = {
+  id: string;
+  numero: number;
+  cliente_id: string | null;
+  stato: StatoConto;
+  tavolo: string | null;
+  note: string | null;
+  aperto_il: string;
+  chiuso_il: string | null;
+  creato_da: string | null;
+  op_id: string;
+};
+
+export type RigaConto = {
+  id: string;
+  conto_id: string;
+  prodotto_id: string | null;
+  /** copiato dal prodotto al momento dell'inserimento (DEC-05) */
+  descrizione: string;
+  /** copiato dal prodotto al momento dell'inserimento (DEC-05) */
+  prezzo_unitario_cent: number;
+  /** negativa negli storni */
+  quantita: number;
+  /** colonna calcolata: quantita * prezzo_unitario_cent */
+  importo_cent: number;
+  storno_di: string | null;
+  creato_il: string;
+  creato_da: string | null;
+  op_id: string;
+};
+
+export type Pagamento = {
+  id: string;
+  cliente_id: string | null;
+  /** null = acconto generico, non riferito a un conto specifico */
+  conto_id: string | null;
+  importo_cent: number;
+  metodo: MetodoPagamento;
+  scontrino_battuto: boolean;
+  note: string | null;
+  storno_di: string | null;
+  creato_il: string;
+  creato_da: string | null;
+  op_id: string;
+};
+
+/* ---------------------------------------------------------------- viste */
+
+export type SaldoCliente = {
+  id: string;
+  nome: string;
+  soprannome: string | null;
+  telefono: string | null;
+  limite_credito_cent: number | null;
+  attivo: boolean;
+  addebitato_cent: number;
+  pagato_cent: number;
+  /** positivo = deve soldi; negativo = ha un acconto */
+  saldo_cent: number;
+  primo_movimento_il: string | null;
+  ultimo_pagamento_il: string | null;
+  ultimo_movimento_il: string | null;
+  /** giorni dall'ultimo pagamento; null se il cliente è in pari */
+  giorni_debito: number | null;
+};
+
+export type ContoAperto = {
+  id: string;
+  numero: number;
+  cliente_id: string | null;
+  cliente_nome: string | null;
+  cliente_soprannome: string | null;
+  tavolo: string | null;
+  aperto_il: string;
+  totale_cent: number;
+  n_righe: number;
+};
+
+export type MovimentoEstrattoConto = {
+  cliente_id: string;
+  data: string;
+  tipo: 'consumazione' | 'pagamento';
+  descrizione: string;
+  quantita: number;
+  /** i pagamenti compaiono negativi, come in un estratto conto bancario */
+  importo_cent: number;
+  conto_numero: number | null;
+  movimento_id: string;
+  e_storno: boolean;
+};
+
+export type VarianteProdotto = {
+  id: string;
+  variante: string;
+  prezzo_cent: number;
+};
+
+export type RiquadroGriglia = {
+  nome_base: string;
+  categoria: string | null;
+  categoria_colore: string | null;
+  categoria_ordine: number | null;
+  ordine: number;
+  preferito: boolean;
+  /** prezzo della variante più economica: è quello mostrato sul riquadro */
+  prezzo_da_cent: number;
+  ha_varianti: boolean;
+  /** ordinate per prezzo crescente */
+  varianti: VarianteProdotto[];
+};
+
+/* ------------------------------------------------- schema per il client */
+
+/**
+ * `Relationships` e `CompositeTypes` sono obbligatori: senza, l'inferenza dei
+ * tipi di supabase-js collassa su `never` e ogni `select()` smette di essere
+ * tipizzato. Sono vuoti perché non usiamo join automatiche via PostgREST.
+ */
+export interface Database {
+  public: {
+    Tables: {
+      profili: {
+        Row: Profilo;
+        Insert: Partial<Profilo> & { id: string; nome: string };
+        Update: Partial<Profilo>;
+        Relationships: [];
+      };
+      clienti: {
+        Row: Cliente;
+        Insert: Partial<Cliente> & { nome: string };
+        Update: Partial<Cliente>;
+        Relationships: [];
+      };
+      categorie: {
+        Row: Categoria;
+        Insert: Partial<Categoria> & { nome: string };
+        Update: Partial<Categoria>;
+        Relationships: [];
+      };
+      prodotti: {
+        Row: Prodotto;
+        Insert: Omit<Partial<Prodotto>, 'nome'> & { nome_base: string; prezzo_cent: number };
+        Update: Omit<Partial<Prodotto>, 'nome'>;
+        Relationships: [];
+      };
+      conti: {
+        Row: Conto;
+        Insert: Partial<Conto> & { op_id: string };
+        Update: Partial<Conto>;
+        Relationships: [];
+      };
+      righe_conto: {
+        Row: RigaConto;
+        Insert: Omit<Partial<RigaConto>, 'importo_cent'> & {
+          conto_id: string;
+          descrizione: string;
+          prezzo_unitario_cent: number;
+          quantita: number;
+          op_id: string;
+        };
+        Update: Omit<Partial<RigaConto>, 'importo_cent'>;
+        Relationships: [];
+      };
+      pagamenti: {
+        Row: Pagamento;
+        Insert: Partial<Pagamento> & { importo_cent: number; op_id: string };
+        Update: Partial<Pagamento>;
+        Relationships: [];
+      };
+    };
+    Views: {
+      v_saldo_clienti: { Row: SaldoCliente; Relationships: [] };
+      v_conti_aperti: { Row: ContoAperto; Relationships: [] };
+      v_estratto_conto: { Row: MovimentoEstrattoConto; Relationships: [] };
+      v_griglia_prodotti: { Row: RiquadroGriglia; Relationships: [] };
+    };
+    Functions: Record<string, never>;
+    Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
+  };
+}
