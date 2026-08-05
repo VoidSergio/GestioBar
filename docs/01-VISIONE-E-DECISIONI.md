@@ -106,6 +106,12 @@ Ogni decisione è riportata con l'alternativa scartata e il motivo, così che tr
 
 **Eccezione pratica:** entro 60 secondi dall'inserimento, e solo se il conto non è stato ancora chiuso, la riga può essere eliminata davvero. Serve a correggere il tap sbagliato senza sporcare lo storico di storni banali. Oltre quel limite, solo storno.
 
+**Conseguenza scoperta costruendo (4 agosto 2026).** Se le righe sono immutabili, allora **non esiste una quantità che sale e scende**: ogni tap crea una riga da un'unità. "Ichnusa ×2" è un raggruppamento fatto per la lettura, non un record.
+
+La prima stesura di `04-UX-MOBILE.md` diceva invece che il tap ripetuto incrementava la quantità della riga esistente. Le due regole non potevano valere insieme, e nessuno se n'era accorto finché non è servito diminuire. Vince DEC-03: è la regola su cui si regge la fiducia nel numero.
+
+Il prezzo pagato è qualche riga in più nel database — due caffè sono due righe. A qualche centinaio di consumazioni al giorno, irrilevante. Il guadagno è che ogni unità ha la sua ora esatta, e i sessanta secondi separano "ho sbagliato a battere" da "il cliente ha cambiato idea" in modo netto.
+
 ### DEC-04 — Prezzi in centesimi, mai in decimali
 
 **Decisione:** tutti gli importi sono numeri interi che rappresentano centesimi. 1,20 € si scrive `120`.
@@ -131,6 +137,22 @@ Ogni decisione è riportata con l'alternativa scartata e il motivo, così che tr
 **Come si evitano i conflitti:** ogni operazione è additiva (aggiungi una riga, aggiungi un pagamento) e porta un identificativo generato dal dispositivo. Due baristi che aggiungono righe allo stesso conto offline non entrano in conflitto: al ritorno della rete si sommano entrambe le righe, che è il comportamento corretto. L'identificativo garantisce che un reinvio non crei duplicati.
 
 **Rinviato alla Fase 3:** le giacenze di magazzino, che invece un conflitto vero ce l'hanno. Vengono trattate come movimenti additivi con riconciliazione, non come un contatore da decrementare.
+
+### DEC-08 — Il conto è una bozza locale finché non lo confermi
+
+**Decisione:** mentre componi un conto, quello che batti vive **sul dispositivo**, in IndexedDB. Diventa un conto vero nel database solo quando premi INCASSA o A CREDITO, con un unico invio che porta intestazione, righe ed eventuale pagamento.
+
+**Perché.** Comporre un conto non è fare contabilità: è prendere un'ordinazione. Se sbagli a battere devi poter correggere liberamente, e l'app non deve conservare da nessuna parte la traccia dei tuoi ripensamenti. Con il salvataggio progressivo, togliere una birra dopo un minuto avrebbe prodotto uno storno — un movimento contabile per un errore di dita.
+
+**Perché in IndexedDB e non solo in memoria.** Il telefono si blocca, la batteria muore, arriva una chiamata, si ricarica la pagina per sbaglio. La bozza deve sopravvivere a tutto questo, altrimenti si ribatte il conto davanti al cliente. Non è localStorage perché IndexedDB regge oggetti strutturati e non ha il limite dei 5 MB.
+
+**Effetto sulle chiamate al server:** da una per prodotto a due o tre per conto. Su Supabase le richieste non sono contate, quindi non era il motivo della scelta — ma è un effetto collaterale gradito.
+
+**Rapporto con DEC-03.** L'immutabilità non viene violata: vale su ciò che è stato **registrato**, e una bozza non lo è. Dal momento della conferma in poi le righe tornano intoccabili e le correzioni passano dagli storni. I sessanta secondi di grazia sul conto già registrato restano per il caso in cui ci si accorga dell'errore subito dopo aver confermato.
+
+**Il prezzo, ed è reale:** la bozza vive su un dispositivo solo. **Due baristi non possono comporre lo stesso conto.** Finché lavora una persona sola non cambia niente; quando arriverà il secondo, le bozze si sposteranno su Supabase e torneranno le operazioni `apri_conto` e `aggiungi_riga`, che sono già scritte e già testate nella coda proprio per questo. Il cambio è circoscritto.
+
+**Chi ha sollevato la questione:** il titolare, chiedendo di poter togliere una birra mentre compone il conto. La domanda ha fatto emergere che il modello precedente trattava una correzione di battitura come un movimento contabile.
 
 ### DEC-07 — Web app installabile (PWA), non app da store
 

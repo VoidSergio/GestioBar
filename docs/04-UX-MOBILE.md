@@ -128,9 +128,10 @@ Selezionato il cliente → si apre direttamente il dettaglio conto con la grigli
 │ ←   Mario Rossi          ● sync │
 │     deve già 24,50 €            │  ← contesto sempre visibile
 ├─────────────────────────────────┤
-│  Caffè          1,20  ×2  2,40 ✕│  ← ✕ solo entro 60s
-│  Cappuccino deca 1,80 ×1  1,80  │  ← variante sempre scritta
-│  Pizzetta sfoglia 1,50 ×1 1,50  │
+│ Caffè         − 2 +      2,40 € │  ← quantità netta del gruppo
+│ 1,20 l'uno                      │
+│ Cappuccino deca − 1 +    1,80 € │  ← variante sempre scritta
+│ 1,80 l'uno                      │
 ├─────────────────────────────────┤
 │ ┌───┬───┬───┬───┬───┬───┬──▸    │
 │ │Tut│Caf│Acq│Bib│Foo│Bir│       │  ← filtro categorie, scorrevole
@@ -161,10 +162,30 @@ Selezionato il cliente → si apre direttamente il dettaglio conto con la grigli
 **Comportamenti:**
 
 - Tap su un prodotto: la riga compare **immediatamente** in cima all'elenco, con un breve lampeggio. Vibrazione breve se il dispositivo la supporta.
-- Tap ripetuto sullo stesso prodotto: incrementa la quantità della riga esistente invece di creare righe duplicate. Più leggibile e più veloce. Vale per la stessa variante: due caffè normali si sommano, un normale e un decaffeinato restano due righe.
+- Tap ripetuto sullo stesso prodotto: nell'elenco compare **una voce sola con la quantità** — "Ichnusa ×2" — invece di due righe uguali. Vale per la stessa variante: due caffè normali si sommano, un normale e un decaffeinato restano voci separate.
+- Ogni voce ha i pulsanti **−** e **+** a destra, sotto il pollice. Il **−** toglie un'unità.
 - **Prodotti con varianti** (il ▾): il tap breve addebita la versione normale, il tap sul ▾ o la pressione prolungata apre l'elenco delle varianti. Il dettaglio completo sta in `07-LISTINO.md` §4.
-- La **✕** per eliminare compare solo per 60 secondi (DEC-03). Dopo, la riga si tiene premuta per aprire "Storna".
-- Le righe stornate restano visibili, barrate e in grigio.
+
+### Che cosa succede davvero quando premi −
+
+Il documento diceva, nella prima stesura, che il tap ripetuto "incrementa la quantità della riga esistente". Era in contraddizione con DEC-03: le righe sono immutabili, e incrementare una quantità è una modifica. La contraddizione è emersa quando è servito **diminuire**.
+
+**Risoluzione: ogni tap crea una riga da un'unità.** Non si modifica mai niente. Il raggruppamento è solo per la lettura — "Ichnusa ×2" a schermo sono due righe nel database, ognuna con la sua ora esatta.
+
+Il **−** ha quindi due comportamenti, e il confine è già scritto nel database (trigger `blocca_cancellazione_riga`):
+
+| Quando | Cosa fa | Perché |
+|---|---|---|
+| entro **60 secondi** | cancella la riga davvero | è un errore di battitura, non deve lasciare traccia |
+| dopo 60 secondi | aggiunge uno storno di −1 | è storia: il cliente ha cambiato idea, e si deve poter ricostruire |
+
+Toglie sempre l'unità **battuta per ultima**: è quella sbagliata, ed è anche l'unica che ha buone probabilità di rientrare nei 60 secondi.
+
+**Gli storni non compaiono come voci a sé nel conto.** Abbassano la quantità del loro gruppo, e basta: "Ichnusa ×2" diventa "Ichnusa ×1". La schermata del conto serve a lavorare con la fila davanti, non a fare l'istruttoria.
+
+La storia completa — ogni riga, ogni storno, con l'ora — resta nell'**estratto conto del cliente** (§8). È lì che si guarda quando qualcuno contesta, ed è lì che DEC-03 mantiene la sua promessa. Separare le due schermate è una scelta: velocità dove si lavora, tracciabilità dove si discute.
+
+- Un gruppo che arriva a zero sparisce dall'elenco: "Ichnusa ×0" non aiuta nessuno.
 - I prodotti "preferiti" occupano le prime posizioni: i sei più usati devono stare nella prima schermata senza scorrere.
 - La barra del totale è **fissa in basso**, sempre visibile mentre si scorre.
 

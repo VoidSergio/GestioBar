@@ -19,9 +19,13 @@
 | T-10 Griglia prodotti | ✅ fatta | anticipata; provata sul telefono |
 | T-07 Provider dati | ✅ fatto | cache su IndexedDB, indicatore di rete |
 | T-08 Anagrafica clienti | ✅ fatta | elenco con saldi, ricerca, creazione |
-| T-09 Coda offline | ⬜ prossimo | il pezzo che rende affidabile tutto il resto |
+| T-09 Coda offline | ✅ fatta | 25 test scritti prima del codice |
+| T-11 Apertura conto | ✅ fatta | home con conti aperti, credito in giro, selettore cliente |
+| T-12 Righe di conto | ✅ fatta | bozza modificabile, conferma con invio unico (DEC-08) |
+| T-13 Incassa e a credito | 🟨 parziale | i due pulsanti ci sono; manca il pannello con importo parziale |
+| T-14 Scheda cliente | ⬜ prossimo | estratto conto e incasso di un debito precedente |
 
-**Fase 0 chiusa.** L'app è pubblicata su Netlify. Il prossimo lavoro è T-09: finché la coda non c'è, ogni scrittura dipende dalla rete.
+**Fase 0 chiusa.** L'app è pubblicata su Netlify, 107 test verdi. Il giro completo funziona: apri un conto, batti, confermi, il credito sale.
 
 ---
 
@@ -221,20 +225,30 @@ Fatto quando:
 ### T-09 — Coda offline
 
 Dipende da: T-07
-File toccati: `lib/offline/db.ts`, `coda.ts`, `sync.ts`
+File toccati: `lib/dominio/coda.ts`, `lib/offline/{coda,invio,sync}.ts`, `lib/hooks/use-coda.ts`, `components/shell/indicatore-sync.tsx`
 
 Cosa fare: implementare il contratto di `03-ARCHITETTURA.md` §4.3.
 
 Fatto quando:
 
-- [ ] Un'operazione creata offline persiste dopo la chiusura del browser
-- [ ] Al ritorno della rete le operazioni partono in ordine di creazione
-- [ ] Un errore di rete fa ritentare con attesa crescente (1s, 2s, 4s… max 60s)
-- [ ] Un errore di dati mette l'operazione in `fallita` senza bloccare le indipendenti
-- [ ] Inviare due volte lo stesso `opId` produce **una sola riga** nel database
-- [ ] L'indicatore mostra il numero di operazioni in coda
+- [x] Un'operazione creata offline persiste dopo la chiusura del browser *(da confermare a mano)*
+- [x] Al ritorno della rete le operazioni partono in ordine di creazione
+- [x] Un errore di rete fa ritentare con attesa crescente (1s, 2s, 4s… max 60s)
+- [x] Un errore di dati mette l'operazione in `fallita` senza bloccare le indipendenti
+- [x] Inviare due volte lo stesso `opId` produce **una sola riga** nel database
+- [x] L'indicatore mostra il numero di operazioni in coda
 
-Questo è il task più delicato del progetto. Vale la pena scriverne i test prima del codice.
+Questo è il task più delicato del progetto. **I test sono stati scritti prima del codice**: 25 test sul solo dominio della coda.
+
+**Come è diviso.** `lib/dominio/coda.ts` contiene il ragionamento — quale operazione mandare, quanto aspettare, quando fermarsi — e non conosce né rete né database, quindi si prova per intero senza nessuno dei due. `lib/offline/sync.ts` esegue e basta. Questa separazione è il motivo per cui il pezzo più rischioso del progetto è anche quello più coperto dai test.
+
+**Le dipendenze fra operazioni.** Una riga non può partire prima del conto che la contiene, e un conto non prima del cliente. Ogni operazione dichiara che cosa produce e che cosa richiede; se qualcosa fallisce, chi dipende da lei resta fermo dietro, mentre **le operazioni indipendenti continuano a partire**. Senza questo, un conto fallito bloccherebbe l'intera giornata.
+
+**Un bug trovato verificando i criteri.** La prima versione riconosceva come "già registrato" solo i duplicati sul vincolo `op_id`. Ma la tabella `clienti` non ha quella colonna: si affida alla chiave primaria, che è comunque generata dal dispositivo. Un reinvio avrebbe prodotto `clienti_pkey` duplicata, classificata come errore di dati, e il cliente sarebbe comparso fra le "operazioni non registrate" pur essendo nel database. Ora entrambi i vincoli valgono come conferma; ogni altro duplicato — per esempio due conti aperti per lo stesso cliente — resta un errore vero.
+
+**Perché una alla volta e non in parallelo.** Mandare conto e riga insieme sarebbe più veloce, ma la riga potrebbe arrivare prima del conto e fallire per chiave esterna mancante. Con qualche decina di operazioni al giorno, la serialità non si percepisce.
+
+**Cosa vede l'utente.** Pallino ambra con il numero mentre la coda si svuota; rosso e tappabile se qualcosa si è fermato, con l'elenco di cosa non è arrivato e i pulsanti **Riprova** e **Scarta**. La decisione su un'operazione fallita è di una persona: il sistema non cancella niente da solo.
 
 ---
 
@@ -277,10 +291,10 @@ Cosa fare: home con conti aperti, pannello **+**, creazione conto.
 
 Fatto quando:
 
-- [ ] La home elenca i conti aperti con cliente, totale e tempo trascorso
-- [ ] Il **+** apre il pannello con "Banco" in cima e i clienti frequenti sotto
-- [ ] I frequenti sono ordinati per numero di conti negli ultimi 30 giorni
-- [ ] Accanto a ogni cliente si vede il suo saldo
+- [x] La home elenca i conti aperti con cliente, totale e tempo trascorso
+- [x] Il **+** apre il pannello con "Banco" in cima e i clienti frequenti sotto
+- [ ] I frequenti sono ordinati per numero di conti negli ultimi 30 giorni *(per ora per debito: i dati di frequenza non esistono ancora)*
+- [x] Accanto a ogni cliente si vede il suo saldo
 - [ ] Selezionare un cliente che ha già un conto aperto porta a quel conto, senza errori
 - [ ] Da "Nuovo cliente" si crea e si apre il conto in un solo passaggio
 - [ ] Il conto si apre anche offline

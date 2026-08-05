@@ -11,7 +11,11 @@ Gestionale per un bar, mobile-first, in italiano. Serve a sapere con certezza **
 
 Stack: Next.js 16 (App Router, Turbopack) + TypeScript strict + Supabase + TanStack Query + Tailwind 4.
 
-**Stato:** Fase 0 chiusa, app pubblicata su Netlify. Fatti T-06 (accesso), T-07 (cache offline), T-08 (clienti), T-10 (griglia prodotti). 59 prodotti a catalogo, 49 test verdi. Il prossimo task è **T-09** (coda offline) in `docs/05-ROADMAP.md`.
+**Stato:** Fase 0 chiusa, app pubblicata su Netlify. Fatti T-06 (accesso), T-07 (cache offline), T-08 (clienti), T-09 (coda), T-10 (griglia), T-11 (apertura conto), T-12 (righe). 59 prodotti a catalogo, 107 test verdi. Il giro completo funziona. Il prossimo task è **T-13/T-14** in `docs/05-ROADMAP.md`.
+
+Le scritture passano tutte da `accoda()` in `lib/offline/coda.ts`, mai direttamente da Supabase. Le regole della coda stanno in `lib/dominio/coda.ts` e sono coperte da 25 test.
+
+**DEC-08 — il conto in composizione è una bozza locale.** Vive in IndexedDB (`lib/offline/bozze.ts`), si modifica liberamente e non tocca il database. Diventa un conto vero solo alla conferma, con l'unica operazione `salva_conto`. Non registrare righe mentre l'utente compone.
 
 Note operative: `middleware.ts` non esiste — in Next 16 si chiama `proxy.ts`. I tipi delle righe in `lib/supabase/tipi.ts` devono restare `type` e non `interface`, altrimenti l'inferenza di supabase-js collassa su `never`.
 
@@ -111,7 +115,7 @@ grep -rn "/ 100" --include=*.ts --include=*.tsx app components lib
 
 **Se un requisito sembra sbagliato:** dillo. Meglio una discussione prima che una riscrittura dopo.
 
-**Se una decisione documentata sembra sbagliata:** dillo, citando il codice della decisione (DEC-01…DEC-07). Non aggirarla in silenzio. Se il ragionamento regge, il documento si aggiorna.
+**Se una decisione documentata sembra sbagliata:** dillo, citando il codice della decisione (DEC-01…DEC-08). Non aggirarla in silenzio. Se il ragionamento regge, il documento si aggiorna.
 
 **Se un task richiede più di quanto sembrava:** fermati e segnalalo prima di scrivere codice, non a metà.
 

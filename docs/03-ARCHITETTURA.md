@@ -70,10 +70,11 @@ gestionale-bar/
 ├── components/
 │   ├── ui/                         # shadcn: button, dialog, input, sheet…
 │   ├── conto/
-│   │   ├── griglia-prodotti.tsx
-│   │   ├── righe-conto.tsx
-│   │   ├── barra-totale.tsx
-│   │   └── dialog-pagamento.tsx
+│   │   ├── griglia-prodotti.tsx    ✅
+│   │   ├── pannello-varianti.tsx   ✅
+│   │   ├── righe-conto.tsx         ✅ voci raggruppate con − e +
+│   │   ├── barra-totale.tsx        #                                 [T-12]
+│   │   └── dialog-pagamento.tsx    #                                 [T-13]
 │   ├── clienti/
 │   │   ├── elenco-clienti.tsx      ✅
 │   │   ├── modulo-nuovo-cliente.tsx ✅
@@ -95,10 +96,12 @@ gestionale-bar/
 │   │   ├── accesso.ts              ✅ richiediAccesso() per le pagine
 │   │   └── tipi.ts                 ✅ scritti a mano, rigenerabili da Supabase CLI
 │   ├── offline/
-│   │   ├── db.ts                   ✅ schema IndexedDB (cache + coda)
+│   │   ├── db.ts                   ✅ schema IndexedDB (cache, coda, bozze)
 │   │   ├── cache-query.ts          ✅ salva/ripristina la cache
-│   │   ├── coda.ts                 # coda di scrittura              [T-09]
-│   │   └── sync.ts                 # motore di sincronizzazione     [T-09]
+│   │   ├── bozze.ts                ✅ deposito delle bozze su IndexedDB
+│   │   ├── coda.ts                 ✅ deposito della coda su IndexedDB
+│   │   ├── invio.ts                ✅ traduce un'operazione in scrittura Supabase
+│   │   └── sync.ts                 ✅ motore: invia, ritenta, si arrende
 │   ├── dominio/
 │   │   ├── denaro.ts               ✅ centesimi, parsing, formattazione
 │   │   ├── denaro.test.ts          ✅ 22 test
@@ -106,13 +109,19 @@ gestionale-bar/
 │   │   ├── clienti.test.ts         ✅ 18 test
 │   │   ├── listino.ts              ✅ scelta variante, nome completo
 │   │   ├── listino.test.ts         ✅ 9 test
-│   │   ├── conti.ts                # regole di business sui conti
+│   │   ├── coda.ts                 ✅ ordine, attese, dipendenze, errori
+│   │   ├── coda.test.ts            ✅ 25 test, scritti prima del codice
+│   │   ├── bozza.ts                ✅ il conto in composizione (DEC-08)
+│   │   ├── bozza.test.ts           ✅ 15 test
+│   │   ├── conti.ts                ✅ raggruppamento, elimina-o-storna
+│   │   ├── conti.test.ts           ✅ 18 test
 │   │   ├── crediti.ts              # calcoli su saldo e anzianità
 │   │   └── schemi.ts               # schemi Zod
 │   ├── hooks/
 │   │   ├── use-prodotti.ts         ✅ griglia dal database
 │   │   ├── use-stato-rete.ts       ✅ online/offline
-│   │   ├── use-clienti.ts          ✅ elenco con saldi + creazione
+│   │   ├── use-clienti.ts          ✅ elenco con saldi + creazione via coda
+│   │   ├── use-coda.ts             ✅ stato della coda per l'indicatore
 │   │   ├── use-conti-aperti.ts     #                                [T-11]
 │   │   ├── use-conto.ts            #                                [T-12]
 │   │   └── use-crediti.ts          #                                [T-15]

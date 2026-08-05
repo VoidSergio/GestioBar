@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { avviaSalvataggioCache, ripristinaCache } from '@/lib/offline/cache-query';
+import { avviaSync } from '@/lib/offline/sync';
 
 export function ProviderDati({ children }: { children: ReactNode }) {
   // useState e non una costante a livello di modulo: un QueryClient condiviso
@@ -30,14 +31,24 @@ export function ProviderDati({ children }: { children: ReactNode }) {
   const [pronto, setPronto] = useState(false);
 
   useEffect(() => {
-    let smetti: (() => void) | undefined;
+    let smettiCache: (() => void) | undefined;
+    let smettiSync: (() => void) | undefined;
 
     void ripristinaCache(client).then(() => {
       setPronto(true);
-      smetti = avviaSalvataggioCache(client);
+      smettiCache = avviaSalvataggioCache(client);
+
+      // Il motore di invio parte con l'app: se il telefono era offline
+      // ieri sera, le operazioni in coda partono adesso da sole.
+      smettiSync = avviaSync(() => {
+        void client.invalidateQueries();
+      });
     });
 
-    return () => smetti?.();
+    return () => {
+      smettiCache?.();
+      smettiSync?.();
+    };
   }, [client]);
 
   // Finché la copia locale non è stata letta non si disegna nulla: mostrare

@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import type { SaldoCliente } from '@/lib/supabase/tipi';
 import { validaNuovoCliente, type DatiNuovoCliente } from '@/lib/dominio/clienti';
+import { accoda } from '@/lib/offline/coda';
+import { sollecitaSync } from '@/lib/offline/sync';
 import { nuovoId } from '@/lib/utils';
 
 export const CHIAVE_CLIENTI = ['clienti-con-saldo'] as const;
@@ -34,16 +36,38 @@ export function useClienti() {
 
 export class ErroreCliente extends Error {}
 
+function clienteVuoto(dati: {
+  id: string;
+  nome: string;
+  soprannome: string | null;
+  telefono: string | null;
+}): SaldoCliente {
+  return {
+    ...dati,
+    limite_credito_cent: null,
+    attivo: true,
+    addebitato_cent: 0,
+    pagato_cent: 0,
+    saldo_cent: 0,
+    primo_movimento_il: null,
+    ultimo_pagamento_il: null,
+    ultimo_movimento_il: null,
+    giorni_debito: null,
+  };
+}
+
 /**
  * Crea un cliente.
  *
- * L'id lo genera il dispositivo (02-MODELLO-DATI.md §2): la riga esiste
- * subito in locale con il suo identificativo definitivo.
+ * Non parla con il server: mette l'operazione in coda e aggiorna subito
+ * l'elenco. Il motore di sincronizzazione la invierà appena possibile,
+ * anche fra dieci minuti, anche dopo aver chiuso e riaperto l'app.
  *
- * NOTA SUL FUNZIONAMENTO SENZA RETE. Questa scrittura richiede la
- * connessione: la coda di T-09 non esiste ancora. È una delle poche
- * eccezioni alla regola "tutto deve funzionare offline", ed è temporanea.
- * L'errore lo dice in italiano invece di fallire in silenzio.
+ * È la regola dell'interfaccia in `CLAUDE.md`: l'utente non aspetta mai la
+ * rete. E l'id lo genera il dispositivo (02-MODELLO-DATI.md §2), così la
+ * riga esiste in locale con il suo identificativo definitivo e ci si possono
+ * già collegare altre operazioni — un conto, per esempio — prima ancora che
+ * il cliente sia arrivato al server.
  */
 export function useCreaCliente() {
   const queryClient = useQueryClient();
@@ -53,85 +77,19 @@ export function useCreaCliente() {
       const esito = validaNuovoCliente(dati);
       if (!esito.valido) throw new ErroreCliente(esito.errore);
 
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        throw new ErroreCliente(
-          'Senza rete non posso registrare un cliente nuovo. Riprova quando torna la connessione.',
-        );
-      }
-
       const id = nuovoId();
-      const { error } = await supabaseBrowser()
-        .from('clienti')
-        .insert({ id, ...esito.dati });
+      await accoda(nuovoId(), { tipo: 'crea_cliente', dati: { id, ...esito.dati } });
+      sollecitaSync();
 
-      if (error) {
-        if (error.code === '23505') {
-          throw new ErroreCliente('Questo cliente risulta già registrato.');
-        }
-        throw new ErroreCliente(
-          'Non sono riuscito a salvare il cliente. Controlla la connessione e riprova.',
-        );
-      }
-
-      return {
-        id,
-        nome: esito.dati.nome,
-        soprannome: esito.dati.soprannome,
-        telefono: esito.dati.telefono,
-        limite_credito_cent: null,
-        attivo: true,
-        addebitato_cent: 0,
-        pagato_cent: 0,
-        saldo_cent: 0,
-        primo_movimento_il: null,
-        ultimo_pagamento_il: null,
-        ultimo_movimento_il: null,
-        giorni_debito: null,
-      };
+      return clienteVuoto({ id, ...esito.dati });
     },
 
-    // Aggiornamento ottimistico: il cliente compare nell'elenco prima che il
-    // server risponda. È la regola dell'interfaccia in CLAUDE.md — l'utente
-    // non aspetta mai la rete.
-    onMutate: async (dati) => {
-      const esito = validaNuovoCliente(dati);
-      if (!esito.valido) return;
-
-      await queryClient.cancelQueries({ queryKey: CHIAVE_CLIENTI });
-      const precedenti = queryClient.getQueryData<SaldoCliente[]>(CHIAVE_CLIENTI);
-
+    onSuccess: (cliente) => {
+      // Compare nell'elenco adesso, non quando risponde il server.
       queryClient.setQueryData<SaldoCliente[]>(CHIAVE_CLIENTI, (vecchi = []) => [
-        ...vecchi,
-        {
-          id: `provvisorio-${nuovoId()}`,
-          nome: esito.dati.nome,
-          soprannome: esito.dati.soprannome,
-          telefono: esito.dati.telefono,
-          limite_credito_cent: null,
-          attivo: true,
-          addebitato_cent: 0,
-          pagato_cent: 0,
-          saldo_cent: 0,
-          primo_movimento_il: null,
-          ultimo_pagamento_il: null,
-          ultimo_movimento_il: null,
-          giorni_debito: null,
-        },
+        ...vecchi.filter((c) => c.id !== cliente.id),
+        cliente,
       ]);
-
-      return { precedenti };
-    },
-
-    onError: (_errore, _dati, contesto) => {
-      // Se il salvataggio fallisce, l'elenco torna com'era: meglio vedere
-      // sparire un nome che credere di averlo registrato.
-      if (contesto?.precedenti) {
-        queryClient.setQueryData(CHIAVE_CLIENTI, contesto.precedenti);
-      }
-    },
-
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: CHIAVE_CLIENTI });
     },
   });
 }

@@ -1,18 +1,25 @@
 'use client';
 
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import type { VoceCoda } from '@/lib/dominio/coda';
+import type { Bozza } from '@/lib/dominio/bozza';
 
 /**
  * Il database locale sul dispositivo.
  *
- * Due depositi:
- *  - `cache`  → copia dei dati letti dal server, per far funzionare l'app senza rete
- *  - `coda`   → operazioni da inviare, riempita in T-09
+ * Tre depositi:
+ *  - `cache`  → copia dei dati letti dal server, per leggere senza rete
+ *  - `coda`   → operazioni da inviare, che devono sopravvivere alla chiusura
+ *               del browser: un caffè segnato alle 7 deve arrivare anche se
+ *               il telefono si spegne prima che torni la linea
+ *  - `bozze`  → i conti che stai componendo, non ancora confermati (DEC-08).
+ *               Sopravvivono a telefono spento e schermo bloccato: è tutto il
+ *               motivo per cui stanno qui invece che in memoria
  *
  * Il numero di versione va alzato ogni volta che cambia la struttura:
  * `upgrade` viene eseguito solo quando il numero cresce.
  */
-const VERSIONE = 1;
+const VERSIONE = 2;
 const NOME = 'gestionale-bar';
 
 export interface SchemaLocale extends DBSchema {
@@ -22,8 +29,13 @@ export interface SchemaLocale extends DBSchema {
   };
   coda: {
     key: string;
-    value: { opId: string; creataIl: number; contenuto: unknown };
+    value: VoceCoda;
     indexes: { 'per-data': number };
+  };
+  bozze: {
+    key: string;
+    value: Bozza;
+    indexes: { 'per-apertura': number };
   };
 }
 
@@ -43,6 +55,10 @@ export function dbLocale() {
         const coda = db.createObjectStore('coda', { keyPath: 'opId' });
         // L'ordine di invio è quello di creazione (03-ARCHITETTURA.md §4.4)
         coda.createIndex('per-data', 'creataIl');
+      }
+      if (!db.objectStoreNames.contains('bozze')) {
+        const bozze = db.createObjectStore('bozze', { keyPath: 'id' });
+        bozze.createIndex('per-apertura', 'apertaIl');
       }
     },
   });
