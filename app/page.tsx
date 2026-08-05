@@ -184,12 +184,29 @@ export default async function Home() {
 
       {tuttoOk && (
         <Link
-          href="/prova-griglia"
+          href="/clienti"
           className="flex min-h-14 items-center justify-between gap-4 rounded-2xl bg-[var(--color-accento)] px-5 py-4 text-[var(--color-sfondo)]"
         >
           <span>
-            <span className="block font-semibold">Prova la griglia prodotti</span>
+            <span className="block font-semibold">Clienti</span>
             <span className="block text-sm opacity-80">
+              anagrafica, saldi e chi deve soldi
+            </span>
+          </span>
+          <span aria-hidden className="text-xl">
+            →
+          </span>
+        </Link>
+      )}
+
+      {tuttoOk && (
+        <Link
+          href="/prova-griglia"
+          className="flex min-h-14 items-center justify-between gap-4 rounded-2xl border border-[var(--color-bordo)] px-5 py-4"
+        >
+          <span>
+            <span className="block font-semibold">Prova la griglia prodotti</span>
+            <span className="block text-sm text-[var(--color-testo-tenue)]">
               34 riquadri col tuo listino — conto finto, non salva nulla
             </span>
           </span>

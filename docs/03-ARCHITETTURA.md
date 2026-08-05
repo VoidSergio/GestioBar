@@ -54,9 +54,8 @@ gestionale-bar/
 │   ├── conto/
 │   │   └── [id]/page.tsx           # dettaglio conto, griglia prodotti
 │   ├── clienti/
-│   │   ├── page.tsx                # elenco + ricerca
-│   │   ├── nuovo/page.tsx
-│   │   └── [id]/page.tsx           # estratto conto, saldo, incassa
+│   │   ├── page.tsx                ✅ elenco + ricerca + creazione
+│   │   └── [id]/page.tsx           # estratto conto, saldo, incassa  [T-14]
 │   ├── crediti/
 │   │   └── page.tsx                # chi deve soldi, per anzianità
 │   ├── listino/
@@ -76,9 +75,10 @@ gestionale-bar/
 │   │   ├── barra-totale.tsx
 │   │   └── dialog-pagamento.tsx
 │   ├── clienti/
-│   │   ├── ricerca-cliente.tsx
-│   │   ├── scheda-saldo.tsx
-│   │   └── estratto-conto.tsx
+│   │   ├── elenco-clienti.tsx      ✅
+│   │   ├── modulo-nuovo-cliente.tsx ✅
+│   │   ├── ricerca-cliente.tsx     # selettore per aprire un conto   [T-11]
+│   │   └── estratto-conto.tsx      #                                 [T-14]
 │   └── shell/
 │       ├── pulsante-esci.tsx       ✅
 │       ├── provider-dati.tsx       ✅ TanStack Query + ripristino cache
@@ -102,13 +102,17 @@ gestionale-bar/
 │   ├── dominio/
 │   │   ├── denaro.ts               ✅ centesimi, parsing, formattazione
 │   │   ├── denaro.test.ts          ✅ 22 test
+│   │   ├── clienti.ts              ✅ validazione, ricerca, ordinamento
+│   │   ├── clienti.test.ts         ✅ 18 test
+│   │   ├── listino.ts              ✅ scelta variante, nome completo
+│   │   ├── listino.test.ts         ✅ 9 test
 │   │   ├── conti.ts                # regole di business sui conti
 │   │   ├── crediti.ts              # calcoli su saldo e anzianità
 │   │   └── schemi.ts               # schemi Zod
 │   ├── hooks/
 │   │   ├── use-prodotti.ts         ✅ griglia dal database
 │   │   ├── use-stato-rete.ts       ✅ online/offline
-│   │   ├── use-clienti.ts          #                                [T-08]
+│   │   ├── use-clienti.ts          ✅ elenco con saldi + creazione
 │   │   ├── use-conti-aperti.ts     #                                [T-11]
 │   │   ├── use-conto.ts            #                                [T-12]
 │   │   └── use-crediti.ts          #                                [T-15]

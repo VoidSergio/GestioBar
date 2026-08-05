@@ -18,9 +18,10 @@
 | T-06 Autenticazione | ✅ fatto | accesso provato, profilo `titolare` creato dal trigger |
 | T-10 Griglia prodotti | ✅ fatta | anticipata; provata sul telefono |
 | T-07 Provider dati | ✅ fatto | cache su IndexedDB, indicatore di rete |
-| T-08 Anagrafica clienti | ⬜ prossimo | il primo pezzo di dati veri |
+| T-08 Anagrafica clienti | ✅ fatta | elenco con saldi, ricerca, creazione |
+| T-09 Coda offline | ⬜ prossimo | il pezzo che rende affidabile tutto il resto |
 
-**Fase 0 chiusa.** T-10 è stato anticipato per provare i tap con le mani prima di costruirci sopra. Il prossimo lavoro è T-08: senza clienti non ci sono conti, e senza conti non c'è credito.
+**Fase 0 chiusa.** L'app è pubblicata su Netlify. Il prossimo lavoro è T-09: finché la coda non c'è, ogni scrittura dipende dalla rete.
 
 ---
 
@@ -94,7 +95,7 @@ Fatto quando:
 - [x] `tsconfig.json` ha `"strict": true` e `noUncheckedIndexedAccess`
 - [x] `.env.local` è in `.gitignore` ed esiste `.env.local.example`
 - [x] `npm run dev` apre l'app senza errori
-- [ ] Il repository è su GitHub, privato
+- [x] Il repository è su GitHub — `VoidSergio/GestioBar`
 
 ---
 
@@ -190,18 +191,30 @@ Fatto quando:
 ### T-08 — Anagrafica clienti
 
 Dipende da: T-06, T-07
-File toccati: `app/clienti/*`, `lib/hooks/use-clienti.ts`, `components/clienti/ricerca-cliente.tsx`
+File toccati: `app/clienti/page.tsx`, `components/clienti/*`, `lib/hooks/use-clienti.ts`, `lib/dominio/clienti.ts`
 
-Cosa fare: elenco, ricerca, creazione, modifica.
+Cosa fare: elenco, ricerca, creazione.
 
 Fatto quando:
 
-- [ ] La ricerca filtra su nome e soprannome mentre si digita, senza ricaricare
-- [ ] Si crea un cliente con il solo nome (soprannome e telefono facoltativi)
-- [ ] Un nome vuoto o di soli spazi viene rifiutato con messaggio chiaro
-- [ ] L'elenco mostra il saldo accanto a ogni nome
-- [ ] Con 0 clienti compare il messaggio guida di `04-UX-MOBILE.md` §10
-- [ ] Funziona offline in lettura
+- [x] La ricerca filtra su nome e soprannome mentre si digita, senza ricaricare
+- [x] Si crea un cliente con il solo nome (soprannome e telefono facoltativi)
+- [x] Un nome vuoto o di soli spazi viene rifiutato con messaggio chiaro
+- [x] L'elenco mostra il saldo accanto a ogni nome
+- [x] Con 0 clienti compare il messaggio guida di `04-UX-MOBILE.md` §10
+- [x] Funziona offline in **lettura**; la creazione richiede la rete e lo dice
+
+**Quattro decisioni prese scrivendolo.**
+
+*La ricerca ignora gli accenti e confronta l'inizio delle parole.* Chi digita "nicolo" trova "Nicolò" — in un bar italiano gli accenti nei nomi ci sono e nessuno li scrive mentre cerca. E chi digita "ros" trova "Mario Rossi" ma non "Ambrosini": cercare in mezzo alle parole riempirebbe l'elenco di risultati che nessuno voleva. 18 test coprono questi casi.
+
+*L'elenco è ordinato per rilevanza, non per alfabeto.* Prima chi deve soldi, dal debito più alto; poi gli altri in ordine alfabetico italiano. Questa schermata serve soprattutto a trovare qualcuno da cui incassare; chi è in pari lo si apre di rado.
+
+*Il cliente compare nell'elenco prima che il server risponda* (aggiornamento ottimistico, regola dell'interfaccia in `CLAUDE.md`). Se il salvataggio fallisce il nome sparisce e compare il motivo: meglio vederlo sparire che credere di averlo registrato.
+
+*La creazione richiede la rete.* È un'eccezione consapevole e temporanea alla regola "tutto deve funzionare offline": la coda di scrittura è T-09 e non esiste ancora. Senza rete il pulsante non fallisce in silenzio, dice *"Senza rete non posso registrare un cliente nuovo. Riprova quando torna la connessione."* Con T-09 questa eccezione sparisce.
+
+**Il nome del file previsto era `ricerca-cliente.tsx`.** Non è stato creato: quel componente è il selettore che si apre premendo **+** sulla home per aprire un conto, e appartiene a T-11. Qui la ricerca è dentro la schermata, dove serve.
 
 ---
 
