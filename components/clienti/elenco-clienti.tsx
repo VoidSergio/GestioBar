@@ -6,6 +6,7 @@ import { descriviSaldo, formatEuro, statoSaldo } from '@/lib/dominio/denaro';
 import { etichettaCliente, filtraClienti, ordinaPerRilevanza } from '@/lib/dominio/clienti';
 import { useClienti } from '@/lib/hooks/use-clienti';
 import { IndicatoreSync } from '@/components/shell/indicatore-sync';
+import { BarraNavigazione } from '@/components/shell/barra-navigazione';
 import { ModuloNuovoCliente } from './modulo-nuovo-cliente';
 import type { SaldoCliente } from '@/lib/supabase/tipi';
 
@@ -23,23 +24,14 @@ export function ElencoClienti() {
     () => (clienti ?? []).reduce((somma, c) => somma + Math.max(c.saldo_cent, 0), 0),
     [clienti],
   );
-  const debitori = useMemo(
-    () => (clienti ?? []).filter((c) => c.saldo_cent > 0).length,
-    [clienti],
-  );
+  const debitori = useMemo(() => (clienti ?? []).filter((c) => c.saldo_cent > 0).length, [clienti]);
 
   return (
     <main className="flex h-dvh flex-col">
       <header className="px-4 pb-3 pt-4">
         <div className="flex items-center justify-between gap-3">
+          {/* Niente freccia indietro: è una scheda della barra in basso */}
           <div className="flex items-center gap-2">
-            <Link
-              href="/"
-              aria-label="Torna indietro"
-              className="-ml-2 flex h-11 w-11 items-center justify-center text-xl text-[var(--color-testo-tenue)]"
-            >
-              ←
-            </Link>
             <h1 className="text-xl font-bold">Clienti</h1>
             <IndicatoreSync />
           </div>
@@ -100,7 +92,7 @@ export function ElencoClienti() {
       </div>
 
       {/* Pulsante principale in basso a destra, raggiungibile col pollice */}
-      <div className="pointer-events-none sticky bottom-0 flex justify-end p-4 pb-sicura">
+      <div className="pointer-events-none sticky bottom-0 flex justify-end p-4">
         <button
           type="button"
           onClick={() => setCreazioneAperta(true)}
@@ -110,6 +102,8 @@ export function ElencoClienti() {
           +
         </button>
       </div>
+
+      <BarraNavigazione />
 
       {creazioneAperta && (
         <ModuloNuovoCliente
@@ -131,17 +125,16 @@ function RigaCliente({ cliente }: { cliente: SaldoCliente }) {
 
   return (
     <li>
-      <div
-        className={`flex min-h-16 items-center gap-3 px-4 py-3 ${provvisorio ? 'opacity-60' : ''}`}
+      <Link
+        href={provvisorio ? '#' : `/clienti/${cliente.id}`}
+        className={`flex min-h-16 items-center gap-3 px-4 py-3 active:bg-[var(--color-superficie)] ${
+          provvisorio ? 'pointer-events-none opacity-60' : ''
+        }`}
       >
         <span className="min-w-0 flex-1">
           <span className="block truncate font-medium">{etichettaCliente(cliente)}</span>
           <span className="block text-xs text-[var(--color-testo-tenue)]">
-            {provvisorio
-              ? 'salvataggio…'
-              : cliente.telefono
-                ? cliente.telefono
-                : 'nessun telefono'}
+            {provvisorio ? 'salvataggio…' : cliente.telefono ? cliente.telefono : 'nessun telefono'}
           </span>
         </span>
 
@@ -159,7 +152,10 @@ function RigaCliente({ cliente }: { cliente: SaldoCliente }) {
             <span className="block text-xs opacity-80">da {cliente.giorni_debito} g</span>
           )}
         </span>
-      </div>
+        <span aria-hidden className="shrink-0 text-[var(--color-testo-tenue)]">
+          →
+        </span>
+      </Link>
     </li>
   );
 }
