@@ -26,7 +26,8 @@
 | T-14 Scheda cliente | ✅ fatta | estratto conto paginato a 30, saldo ancorato a `v_saldo_clienti` |
 | T-15 Crediti | ✅ fatta | ordine per anzianità, filtri, sollecito modificabile prima dell'invio |
 | Scontrini | ✅ fatta | **anticipata dalla Fase 2** su richiesta del titolare |
-| T-16 Listino | ⬜ prossimo | prezzi, varianti, preferiti, riordino |
+| T-16 Listino | 🟨 quasi | prezzi, varianti, preferiti, disattivazione. **Manca il riordino per trascinamento** |
+| T-17 PWA | ⬜ prossimo | service worker e installazione |
 
 **Fase 0 chiusa.** L'app è pubblicata su Netlify, 158 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
 
@@ -398,15 +399,17 @@ File toccati: `app/listino/page.tsx`
 
 Cosa fare: modifica prezzi, varianti, preferiti, riordino, disattivazione.
 
+**Il riordino per trascinamento non è stato fatto.** Non è fra i criteri qui sotto — compare solo in `04-UX-MOBILE.md` §9 — e il trascinamento su telefono è una libreria in più contro una regola di `03-ARCHITETTURA.md` §1. I prodotti nuovi finiscono in fondo alla loro categoria. Se al banco l'ordine dà fastidio, si riapre con delle frecce su/giù invece del trascinamento.
+
 Fatto quando:
 
-- [ ] Il prezzo si modifica in linea e si salva
-- [ ] Cambiando un prezzo compare l'avviso che vale solo per il futuro
-- [ ] Si aggiunge una variante a un prodotto esistente e compare subito nel pannello varianti della griglia
-- [ ] Si aggiunge un prodotto nuovo con la sua categoria
-- [ ] Segnando più di 9 preferiti compare un avviso
-- [ ] Un prodotto si disattiva e sparisce dalla griglia, restando nello storico
-- [ ] Richiede la rete, e lo dice se non c'è
+- [x] Il prezzo si modifica in linea e si salva
+- [x] Cambiando un prezzo compare l'avviso che vale solo per il futuro
+- [x] Si aggiunge una variante a un prodotto esistente e compare subito nel pannello varianti della griglia
+- [x] Si aggiunge un prodotto nuovo con la sua categoria
+- [x] Segnando più di 9 preferiti compare un avviso
+- [x] Un prodotto si disattiva e sparisce dalla griglia, restando nello storico
+- [x] Richiede la rete, e lo dice se non c'è
 
 ---
 

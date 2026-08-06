@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { variantePredefinita, nomeCompleto, categorieDi } from './listino';
+import {
+  variantePredefinita,
+  nomeCompleto,
+  categorieDi,
+  avvisoCambioPrezzo,
+  raggruppaListino,
+  troppiPreferiti,
+  validaNuovaVoce,
+  validaPrezzo,
+} from './listino';
 import type { RiquadroGriglia } from '@/lib/supabase/tipi';
 
 function riquadro(
@@ -55,7 +64,7 @@ describe('variantePredefinita', () => {
     expect(variantePredefinita(ichnusa).variante).toBe('0,33');
   });
 
-  it('non si affida all\'ordine dell\'elenco', () => {
+  it("non si affida all'ordine dell'elenco", () => {
     // Stesse varianti, ordine invertito: il risultato non cambia
     const vino = riquadro(
       'Vino al calice',
@@ -95,7 +104,7 @@ describe('nomeCompleto', () => {
 });
 
 describe('categorieDi', () => {
-  it('restituisce le categorie nell\'ordine del listino, senza ripetizioni', () => {
+  it("restituisce le categorie nell'ordine del listino, senza ripetizioni", () => {
     const riquadri = [
       riquadro('Spritz', [['normale', 500]], 'Aperitivi', 6),
       riquadro('Caffè', [['normale', 120]], 'Caffetteria', 1),
@@ -107,5 +116,139 @@ describe('categorieDi', () => {
 
   it('regge un elenco vuoto', () => {
     expect(categorieDi([])).toEqual([]);
+  });
+});
+
+describe('validaPrezzo', () => {
+  it('accetta un prezzo normale', () => {
+    expect(validaPrezzo(120)).toEqual({ valido: true, prezzoCent: 120 });
+  });
+
+  it('accetta lo zero: esiste il prodotto in omaggio', () => {
+    expect(validaPrezzo(0).valido).toBe(true);
+  });
+
+  it('rifiuta il non-numero e il negativo', () => {
+    expect(validaPrezzo(null).valido).toBe(false);
+    expect(validaPrezzo(-1).valido).toBe(false);
+  });
+
+  it('ferma lo zero di troppo', () => {
+    // 1.200,00 € per un caffè: è un dito scivolato, non un prezzo
+    const e = validaPrezzo(120_000);
+    expect(e.valido).toBe(false);
+    if (e.valido) return;
+    expect(e.errore).toMatch(/zero/i);
+  });
+});
+
+describe('troppiPreferiti', () => {
+  it('nove entrano nella griglia, dieci no', () => {
+    expect(troppiPreferiti(9)).toBe(false);
+    expect(troppiPreferiti(10)).toBe(true);
+  });
+});
+
+describe('avvisoCambioPrezzo', () => {
+  it('dice che vale per il futuro, e non chiede conferma', () => {
+    const a = avvisoCambioPrezzo(120, 130);
+    expect(a).toMatch(/alzato/);
+    expect(a).toMatch(/prossime consumazioni/i);
+    expect(a).not.toMatch(/\?$/);
+  });
+
+  it('riconosce anche il ribasso', () => {
+    expect(avvisoCambioPrezzo(130, 120)).toMatch(/abbassato/);
+  });
+});
+
+describe('validaNuovaVoce', () => {
+  const esistenti = [
+    { nome_base: 'Caffè', variante: 'normale' },
+    { nome_base: 'Caffè', variante: 'decaffeinato' },
+  ];
+
+  it('accetta un prodotto nuovo', () => {
+    const e = validaNuovaVoce({ nomeBase: '  Spritz ', prezzoCent: 500 }, esistenti);
+    expect(e.valido).toBe(true);
+    if (!e.valido) return;
+    expect(e.dati.nomeBase).toBe('Spritz');
+    expect(e.dati.variante).toBe('normale');
+  });
+
+  it('senza variante mette "normale", non la stringa vuota', () => {
+    const e = validaNuovaVoce({ nomeBase: 'Spritz', variante: '   ', prezzoCent: 500 }, []);
+    expect(e.valido).toBe(true);
+    if (!e.valido) return;
+    expect(e.dati.variante).toBe('normale');
+  });
+
+  it('accetta una variante nuova di un prodotto che esiste', () => {
+    const e = validaNuovaVoce(
+      { nomeBase: 'Caffè', variante: 'in vetro', prezzoCent: 130 },
+      esistenti,
+    );
+    expect(e.valido).toBe(true);
+  });
+
+  it('rifiuta il doppione, ignorando le maiuscole', () => {
+    const e = validaNuovaVoce(
+      { nomeBase: 'caffè', variante: 'DECAFFEINATO', prezzoCent: 130 },
+      esistenti,
+    );
+    expect(e.valido).toBe(false);
+    if (e.valido) return;
+    expect(e.errore).toMatch(/esiste già/);
+  });
+
+  it('rifiuta il nome vuoto e il prezzo assurdo', () => {
+    expect(validaNuovaVoce({ nomeBase: '   ', prezzoCent: 100 }, []).valido).toBe(false);
+    expect(validaNuovaVoce({ nomeBase: 'Spritz', prezzoCent: null }, []).valido).toBe(false);
+  });
+});
+
+describe('raggruppaListino', () => {
+  const categorie = [
+    { id: 'cat-caffe', nome: 'Caffetteria', ordine: 1 },
+    { id: 'cat-birre', nome: 'Birre', ordine: 5 },
+  ];
+
+  function prod(nomeBase: string, variante: string, categoriaId: string | null, ordine = 0) {
+    return {
+      id: `${nomeBase}-${variante}`,
+      nome_base: nomeBase,
+      variante,
+      prezzo_cent: 120,
+      preferito: false,
+      attivo: true,
+      ordine,
+      categoria_id: categoriaId,
+    };
+  }
+
+  it('mette le categorie nel loro ordine, non alfabetico', () => {
+    const g = raggruppaListino(
+      [prod('Ichnusa', '0,33', 'cat-birre'), prod('Caffè', 'normale', 'cat-caffe')],
+      categorie,
+    );
+    expect(g.map((x) => x.categoria)).toEqual(['Caffetteria', 'Birre']);
+  });
+
+  it('tiene vicine le varianti dello stesso prodotto', () => {
+    const g = raggruppaListino(
+      [
+        prod('Cappuccino', 'normale', 'cat-caffe', 3),
+        prod('Caffè', 'decaffeinato', 'cat-caffe', 1),
+        prod('Caffè', 'normale', 'cat-caffe', 1),
+      ],
+      categorie,
+    );
+    expect(g[0]!.prodotti.map((p) => p.nome_base)).toEqual(['Caffè', 'Caffè', 'Cappuccino']);
+  });
+
+  it('un prodotto senza categoria non sparisce', () => {
+    const g = raggruppaListino([prod('Boh', 'normale', null)], categorie);
+    expect(g).toHaveLength(1);
+    expect(g[0]!.categoria).toBe('Senza categoria');
   });
 });

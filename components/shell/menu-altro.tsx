@@ -21,10 +21,15 @@ const VOCI = [
     titolo: 'Scontrini',
     descrizione: 'Che cosa è stato battuto e che cosa no',
   },
+  {
+    href: '/listino',
+    icona: '📋',
+    titolo: 'Listino',
+    descrizione: 'Prezzi, varianti, preferiti',
+  },
 ] as const;
 
 const IN_ARRIVO = [
-  { icona: '📋', titolo: 'Listino', quando: 'prezzi e varianti — T-16' },
   { icona: '💶', titolo: 'Cassa', quando: 'chiusura giornaliera — Fase 2' },
   { icona: '📦', titolo: 'Magazzino', quando: 'giacenze e carichi — Fase 3' },
 ] as const;
