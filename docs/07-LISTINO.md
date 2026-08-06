@@ -47,6 +47,7 @@
 | Heineken | 2,50 | 3,50 | — |
 | Beck's | 2,50 | 3,50 | — |
 | Tuborg | 2,50 | 3,50 | — |
+| Stella Artois | 2,50 | — | — |
 | Tennent's | 3,00 | — | — |
 | Corona | 3,50 | — | — |
 
@@ -92,21 +93,21 @@ Le patatine sono un riquadro solo con due varianti e **nessuna "normale"**: il t
 
 ---
 
-**61 prodotti vendibili, 35 riquadri nella griglia.**
+**62 prodotti vendibili, 36 riquadri nella griglia.**
 
-Senza il modello a varianti (§3.4 di `02-MODELLO-DATI.md`) la griglia avrebbe 61 riquadri e sarebbe inutilizzabile su un telefono. Con il raggruppamento, ogni categoria sta in una schermata sola:
+Senza il modello a varianti (§3.4 di `02-MODELLO-DATI.md`) la griglia avrebbe 62 riquadri e sarebbe inutilizzabile su un telefono. Con il raggruppamento, ogni categoria sta in una schermata sola:
 
 | Categoria | Prodotti | Riquadri |
 |---|---|---|
 | Caffetteria | 23 | 9 |
 | Acque | 4 | 3 |
 | Bibite | 4 | 4 |
-| Birre | 11 | 6 |
+| Birre | 12 | 7 |
 | Aperitivi | 7 | 6 |
 | Vini | 4 | 1 |
 | Superalcolici | 4 | 3 |
 | Food | 4 | 3 |
-| **Totale** | **61** | **35** |
+| **Totale** | **62** | **36** |
 
 ### Regolarità osservate nel listino
 
@@ -114,7 +115,7 @@ Non sono regole imposte dal sistema — i prezzi restano scritti uno per uno —
 
 - **Decaffeinato: +0,10** su tutte le bevande calde, senza eccezioni.
 - **Alta digeribilità: +0,30** sul cappuccino, **+0,20** su latte macchiato e caffellatte.
-- **Birre:** la 0,66 costa 1,00 in più della 0,33 (Ichnusa e le tre "standard" a 2,50). Ichnusa è la birra "base" a prezzo più basso; Tennent's e Corona sono fuori scala perché vendute solo in 0,33.
+- **Birre:** la 0,66 costa 1,00 in più della 0,33 (Ichnusa e le tre "standard" a 2,50). Ichnusa è la birra "base" a prezzo più basso; Tennent's, Corona e Stella Artois sono a listino solo in 0,33. Per la Stella la 0,66 non è stata inserita perché il prezzo non è stato confermato: la regolarità direbbe 3,50, ma un prezzo non si deduce.
 - **Aggiunte agli aperitivi: +0,50.** Vale sul Campari soda ed è ragionevole estenderla ad altre basi se serve.
 - Il **corretto** (+0,50 sul caffè) non è una variante di prezzo ma un prodotto a sé: ha un ingrediente in più.
 
