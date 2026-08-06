@@ -6,7 +6,7 @@
 
 ---
 
-## Stato al 4 agosto 2026
+## Stato al 6 agosto 2026
 
 | Task | Stato | Nota |
 |---|---|---|
@@ -22,10 +22,16 @@
 | T-09 Coda offline | ✅ fatta | 25 test scritti prima del codice |
 | T-11 Apertura conto | ✅ fatta | home con conti aperti, credito in giro, selettore cliente |
 | T-12 Righe di conto | ✅ fatta | bozza modificabile, conferma con invio unico (DEC-08) |
-| T-13 Incassa e a credito | 🟨 parziale | i due pulsanti ci sono; manca il pannello con importo parziale |
-| T-14 Scheda cliente | ⬜ prossimo | estratto conto e incasso di un debito precedente |
+| T-13 Incassa e a credito | ✅ fatto | pannello pagamento, importo parziale, resto, riepilogo di 2 s |
+| T-14 Scheda cliente | ✅ fatta | estratto conto paginato a 30, saldo ancorato a `v_saldo_clienti` |
+| T-15 Crediti | ✅ fatta | ordine per anzianità, filtri, sollecito modificabile prima dell'invio |
+| T-16 Listino | ⬜ prossimo | prezzi, varianti, preferiti, riordino |
 
-**Fase 0 chiusa.** L'app è pubblicata su Netlify, 107 test verdi. Il giro completo funziona: apri un conto, batti, confermi, il credito sale.
+**Fase 0 chiusa.** L'app è pubblicata su Netlify, 158 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
+
+**Navigazione:** tab bar in basso (04-UX-MOBILE §2) sulle tre schermate principali. La quarta voce, "Altro", arriva con T-16 — è il primo contenuto che ci finirebbe dentro.
+
+**Da provare sul telefono, non verificabile a tavolino:** il comportamento offline di T-13 e T-14 e i bersagli di tocco del pannello pagamento.
 
 ---
 
@@ -325,21 +331,21 @@ Fatto quando:
 ### T-13 — Chiusura conto: incassa e a credito
 
 Dipende da: T-12
-File toccati: `components/conto/dialog-pagamento.tsx`
+File toccati: `components/conto/pannello-pagamento.tsx`, `lib/dominio/crediti.ts`
 
 Cosa fare: pannello pagamento di `04-UX-MOBILE.md` §6 e azione "A credito".
 
 Fatto quando:
 
-- [ ] "A CREDITO" chiude il conto in un tap, senza conferma, e il saldo del cliente aumenta dell'importo esatto
-- [ ] "A CREDITO" non compare sui conti "Banco"
-- [ ] Il pannello incasso mostra conto corrente, debito precedente e totale dovuto
-- [ ] Le due scorciatoie ("solo il conto" / "tutto") inseriscono l'importo giusto
-- [ ] Un pagamento parziale lascia la differenza a saldo
-- [ ] Un importo superiore al dovuto mostra il resto da dare
-- [ ] Dopo la conferma compare il nuovo saldo per 2 secondi, poi si torna alla home
-- [ ] Il metodo di pagamento viene salvato
-- [ ] Tutto funziona offline
+- [x] "A CREDITO" chiude il conto in un tap, senza conferma, e il saldo del cliente aumenta dell'importo esatto
+- [x] "A CREDITO" non compare sui conti "Banco"
+- [x] Il pannello incasso mostra conto corrente, debito precedente e totale dovuto
+- [x] Le due scorciatoie ("solo il conto" / "tutto") inseriscono l'importo giusto
+- [x] Un pagamento parziale lascia la differenza a saldo
+- [x] Un importo superiore al dovuto mostra il resto da dare
+- [x] Dopo la conferma compare il nuovo saldo per 2 secondi, poi si torna alla home
+- [x] Il metodo di pagamento viene salvato
+- [ ] Tutto funziona offline — **da provare sul telefono**
 
 ---
 
@@ -352,33 +358,33 @@ Cosa fare: saldo, azioni rapide, movimenti raggruppati per giorno.
 
 Fatto quando:
 
-- [ ] Il saldo mostrato coincide con `v_saldo_clienti`
-- [ ] I movimenti sono raggruppati per giorno, dal più recente
-- [ ] I pagamenti appaiono in verde con segno meno
-- [ ] Gli storni sono visibili e barrati
-- [ ] "APRI CONTO" e "INCASSA" funzionano dalla scheda
-- [ ] Il caricamento è paginato (30 movimenti alla volta)
-- [ ] Offline: il saldo si vede, lo storico avvisa che serve la rete
+- [x] Il saldo mostrato coincide con `v_saldo_clienti`
+- [x] I movimenti sono raggruppati per giorno, dal più recente
+- [x] I pagamenti appaiono in verde con segno meno
+- [x] Gli storni sono visibili e barrati
+- [x] "APRI CONTO" e "INCASSA" funzionano dalla scheda
+- [x] Il caricamento è paginato (30 movimenti alla volta)
+- [x] Offline: il saldo si vede, lo storico avvisa che serve la rete — **da riprovare in modalità aereo**
 
 ---
 
 ### T-15 — Schermata Crediti
 
 Dipende da: T-14
-File toccati: `app/crediti/page.tsx`, `lib/dominio/crediti.ts`
+File toccati: `app/crediti/page.tsx`, `components/crediti/`, `lib/dominio/crediti.ts`, `components/shell/barra-navigazione.tsx`
 
 Cosa fare: elenco debitori per anzianità, filtri, azioni chiama/scrivi.
 
 Fatto quando:
 
-- [ ] L'elenco è ordinato per giorni di debito decrescenti
-- [ ] Il colore segue le soglie: verde ≤15 gg, arancione ≤45 gg, rosso oltre
-- [ ] Il totale in cima coincide con la somma dei saldi positivi
-- [ ] I filtri >30gg e >60gg funzionano
-- [ ] "Chiama" apre il dialer con il numero
-- [ ] "Scrivi" apre WhatsApp o SMS con il messaggio precompilato di `04-UX-MOBILE.md` §7, **modificabile prima dell'invio**
-- [ ] Nessun messaggio parte automaticamente
-- [ ] Con 0 debitori compare "Nessuno ti deve soldi 🎉"
+- [x] L'elenco è ordinato per giorni di debito decrescenti
+- [x] Il colore segue le soglie: verde ≤15 gg, arancione ≤45 gg, rosso oltre
+- [x] Il totale in cima coincide con la somma dei saldi positivi
+- [x] I filtri >30gg e >60gg funzionano
+- [x] "Chiama" apre il dialer con il numero
+- [x] "Scrivi" apre WhatsApp o SMS con il messaggio precompilato di `04-UX-MOBILE.md` §7, **modificabile prima dell'invio**
+- [x] Nessun messaggio parte automaticamente
+- [x] Con 0 debitori compare "Nessuno ti deve soldi 🎉"
 
 ---
 
