@@ -71,9 +71,9 @@ export function GrigliaProdotti({ onAggiungi }: Props) {
   }
 
   return (
-    <div className="flex min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {/* Filtro categorie: scorrevole, perché otto voci non stanno in larghezza */}
-      <div className="flex gap-1.5 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex shrink-0 gap-1.5 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {[TUTTI, ...categorie].map((c) => (
           <button
             key={c}
@@ -90,7 +90,7 @@ export function GrigliaProdotti({ onAggiungi }: Props) {
         ))}
       </div>
 
-      <div className="grid flex-1 grid-cols-3 content-start gap-2 overflow-y-auto p-2">
+      <div className="grid min-h-0 flex-1 grid-cols-3 content-start gap-2 overflow-y-auto p-2">
         {visibili.map((r) => (
           <Riquadro
             key={r.nome_base}
