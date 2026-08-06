@@ -40,7 +40,14 @@
 -- ============================================================
 -- La policy esistente copriva anche DELETE: si restringe a quello che serve
 -- davvero, cioè leggere, inserire e aggiornare.
-drop policy if exists "scrittura autenticati" on clienti;
+drop policy if exists "scrittura autenticati"       on clienti;
+-- `create policy` non ha una forma "if not exists": senza questi drop, chi
+-- rilancia la migrazione prende un 42710 a metà strada, con le prime policy
+-- create e le altre no. Meglio ripartire puliti.
+drop policy if exists "lettura clienti"             on clienti;
+drop policy if exists "inserimento clienti"         on clienti;
+drop policy if exists "modifica clienti"            on clienti;
+drop policy if exists "cancellazione solo titolare" on clienti;
 
 create policy "lettura clienti" on clienti
   for select to authenticated using (true);
