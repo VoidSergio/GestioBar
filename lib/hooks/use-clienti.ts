@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import type { SaldoCliente } from '@/lib/supabase/tipi';
 import { validaNuovoCliente, type DatiNuovoCliente } from '@/lib/dominio/clienti';
@@ -32,6 +32,36 @@ export function useClienti() {
     // I saldi cambiano a ogni consumazione: cinque minuti, non un'ora.
     staleTime: 5 * 60 * 1000,
   });
+}
+
+/**
+ * Sposta il saldo di un cliente in cache, subito, prima che il server lo sappia.
+ *
+ * PERCHÉ ESISTE. Lo stesso saldo vive in due query — l'elenco (`CHIAVE_CLIENTI`)
+ * e la scheda (`['cliente', id]`) — e chi ne aggiornava una sola faceva
+ * comparire due numeri diversi per la stessa persona in due schermate.
+ * Qui si toccano sempre entrambe.
+ *
+ * PERCHÉ NON SI INVALIDA E BASTA. `invalidateQueries` subito dopo aver messo
+ * l'operazione in coda rilegge dal server *prima* che la scrittura ci arrivi:
+ * torna il saldo vecchio e TanStack lo marca fresco. La lettura giusta arriva
+ * da sola quando la coda si svuota (`avviaSync` in `provider-dati.tsx`).
+ *
+ * @param delta variazione in centesimi: positivo se il cliente deve di più
+ */
+export function aggiornaSaldoInCache(
+  queryClient: QueryClient,
+  clienteId: string,
+  delta: number,
+): void {
+  if (delta === 0) return;
+
+  queryClient.setQueryData<SaldoCliente | null>(['cliente', clienteId], (c) =>
+    c ? { ...c, saldo_cent: c.saldo_cent + delta } : c,
+  );
+  queryClient.setQueryData<SaldoCliente[]>(CHIAVE_CLIENTI, (elenco) =>
+    elenco?.map((c) => (c.id === clienteId ? { ...c, saldo_cent: c.saldo_cent + delta } : c)),
+  );
 }
 
 export class ErroreCliente extends Error {}
@@ -78,7 +108,10 @@ export function useCreaCliente() {
       if (!esito.valido) throw new ErroreCliente(esito.errore);
 
       const id = nuovoId();
-      await accoda(nuovoId(), { tipo: 'crea_cliente', dati: { id, ...esito.dati } });
+      await accoda(nuovoId(), {
+        tipo: 'crea_cliente',
+        dati: { id, ...esito.dati },
+      });
       sollecitaSync();
 
       return clienteVuoto({ id, ...esito.dati });

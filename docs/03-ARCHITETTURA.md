@@ -271,6 +271,10 @@ Il ciclo di vita:
 4. Il motore di sincronizzazione prende le operazioni in ordine e le invia.
 5. Successo → la voce esce dalla coda. Errore di rete → si ritenta con attesa crescente (1s, 2s, 4s… fino a 60s). Errore di dati (vincolo violato) → la voce va in `fallita` e viene mostrata all'utente.
 
+**Mai `invalidateQueries` subito dopo aver accodato.** È la trappola in cui si cade per istinto: si mette l'operazione in coda e si chiede a TanStack di rileggere. Ma la lettura parte prima che la scrittura sia arrivata al server, torna il valore vecchio e viene marcata *fresca* — così il saldo resta indietro per tutto lo `staleTime`, e l'elenco clienti mostra un numero diverso dalla scheda dello stesso cliente.
+
+La regola è: **aggiornare la cache a mano con il valore giusto** (`aggiornaSaldoInCache` in `lib/hooks/use-clienti.ts`) e lasciare che la rilettura vera arrivi da sola quando la coda si svuota — `avviaSync` invalida tutto dopo ogni operazione riuscita. Chi tocca il saldo di un cliente deve aggiornare **entrambe** le query che lo contengono, l'elenco e la scheda: è il motivo per cui esiste quella funzione invece di due `setQueryData` sparsi.
+
 ### 4.4 Ordine e dipendenze
 
 Le operazioni si inviano **in ordine di creazione**, sempre. Se "apri conto" non è ancora arrivato al server, "aggiungi riga" su quel conto fallirebbe per chiave esterna mancante. Mantenere l'ordine risolve il problema senza logica aggiuntiva.
