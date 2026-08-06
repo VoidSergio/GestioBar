@@ -16,6 +16,7 @@ import {
 import { useScontrini } from '@/lib/hooks/use-scontrini';
 import { IndicatoreSync } from '@/components/shell/indicatore-sync';
 import { BarraNavigazione } from '@/components/shell/barra-navigazione';
+import { AvvisoLettura } from '@/components/shell/avviso-lettura';
 import type { MovimentoScontrino } from '@/lib/supabase/tipi';
 
 /**
@@ -52,7 +53,7 @@ export function ElencoScontrini() {
   });
   const [gruppo, setGruppo] = useState<GruppoScontrini>('non_scontrinato');
 
-  const { data: movimenti, isPending, fetchStatus, error } = useScontrini(giorno);
+  const { data: movimenti, isPending, fetchStatus, error, refetch } = useScontrini(giorno);
 
   const riassunto = useMemo(() => riassumiScontrini(movimenti ?? []), [movimenti]);
   const visibili = useMemo(() => filtraPerGruppo(movimenti ?? [], gruppo), [movimenti, gruppo]);
@@ -181,9 +182,7 @@ export function ElencoScontrini() {
         </div>
 
         {error || inPausa ? (
-          <p className="px-8 py-10 text-center text-sm text-[var(--color-testo-tenue)]">
-            Questa schermata richiede la connessione.
-          </p>
+          <AvvisoLettura errore={error} onRiprova={() => void refetch()} />
         ) : isPending ? (
           <div className="mt-4 space-y-2 px-5" aria-busy="true">
             {Array.from({ length: 3 }).map((_, i) => (

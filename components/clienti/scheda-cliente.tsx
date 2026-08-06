@@ -8,6 +8,7 @@ import { conSaldoProgressivo, raggruppaPerGiorno } from '@/lib/dominio/crediti';
 import { PAGINA_MOVIMENTI, useCliente, useEstrattoConto } from '@/lib/hooks/use-cliente';
 import { useApriConto } from '@/lib/hooks/use-bozze';
 import { IndicatoreSync } from '@/components/shell/indicatore-sync';
+import { AvvisoLettura } from '@/components/shell/avviso-lettura';
 import { PannelloIncasso } from './pannello-incasso';
 import { PannelloRimozione } from './pannello-rimozione';
 
@@ -21,6 +22,7 @@ export function SchedaCliente({ id, ruolo }: { id: string; ruolo: Ruolo | null }
     isFetching,
     fetchStatus,
     error,
+    refetch,
   } = useEstrattoConto(id, quanti);
   const apri = useApriConto();
   const [incasso, setIncasso] = useState(false);
@@ -183,9 +185,12 @@ export function SchedaCliente({ id, ruolo }: { id: string; ruolo: Ruolo | null }
         </h2>
 
         {error || inPausa ? (
-          <p className="px-8 py-8 text-center text-sm text-[var(--color-testo-tenue)]">
-            Lo storico richiede la connessione. Il saldo qui sopra è comunque aggiornato.
-          </p>
+          <AvvisoLettura
+            errore={error}
+            cosa="Lo storico"
+            rassicurazione="Il saldo qui sopra è comunque aggiornato."
+            onRiprova={() => void refetch()}
+          />
         ) : caricoMovimenti ? (
           <div className="space-y-2 px-5" aria-busy="true">
             {Array.from({ length: 4 }).map((_, i) => (

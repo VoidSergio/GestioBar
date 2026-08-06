@@ -11,6 +11,7 @@ import {
   type AzioneRimozione,
   type Ruolo,
 } from '@/lib/dominio/clienti';
+import { ErroreLettura } from '@/lib/dominio/errori';
 import { aggiornaSaldoInCache, CHIAVE_CLIENTI } from './use-clienti';
 import { nuovoId } from '@/lib/utils';
 
@@ -25,7 +26,7 @@ export function useCliente(id: string) {
         .eq('id', id)
         .maybeSingle();
 
-      if (error) throw new Error(error.message);
+      if (error) throw new ErroreLettura(error.message, error.code);
       return data;
     },
     staleTime: 60 * 1000,
@@ -53,7 +54,7 @@ export function useEstrattoConto(clienteId: string, quanti = PAGINA_MOVIMENTI) {
         .order('data', { ascending: false })
         .limit(quanti);
 
-      if (error) throw new Error(error.message);
+      if (error) throw new ErroreLettura(error.message, error.code);
       // I movimenti si restituiscono grezzi: il saldo progressivo dipende dal
       // saldo attuale, che è un'altra query. Ancorarlo qui vorrebbe dire
       // riscaricare lo storico a ogni caffè.

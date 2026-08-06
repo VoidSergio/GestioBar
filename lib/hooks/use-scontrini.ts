@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import type { MovimentoScontrino } from '@/lib/supabase/tipi';
 import { intervalloGiornata } from '@/lib/dominio/scontrini';
+import { ErroreLettura } from '@/lib/dominio/errori';
 
 /**
  * I movimenti di una giornata, per capire che cosa è stato battuto.
@@ -28,7 +29,9 @@ export function useScontrini(giorno: Date) {
         .lt('data', fine)
         .order('data', { ascending: false });
 
-      if (error) throw new Error(error.message);
+      // Il codice serve a distinguere "manca la rete" da "manca la vista":
+      // new Error(message) lo butterebbe via.
+      if (error) throw new ErroreLettura(error.message, error.code);
       return (data ?? []) as MovimentoScontrino[];
     },
     // Un minuto: durante il turno si aggiunge roba di continuo, e questa

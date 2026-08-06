@@ -379,6 +379,10 @@ Tre categorie, tre comportamenti:
 
 Regola generale: **un errore non deve mai far perdere dati inseriti**. Se un pagamento non parte, resta in coda; se una schermata va in errore, i dati sono comunque in IndexedDB.
 
+**Non si dà la colpa alla rete senza sapere che è la rete.** È l'errore in cui si cade per comodità: un solo messaggio "serve la connessione" per qualunque lettura fallita. Quando il server risponde davvero — una vista che non esiste perché una migrazione non è stata eseguita, un permesso negato — quel messaggio manda a controllare il modem, che funziona. Un messaggio sbagliato costa più tempo di nessun messaggio.
+
+`spiegaErroreLettura()` in `lib/dominio/errori.ts` distingue quattro cause e restituisce la frase giusta; `AvvisoLettura` la mostra. Perché funzioni, chi legge deve lanciare `ErroreLettura` conservando il codice del database: `new Error(error.message)` butta via proprio il codice che serve a distinguere i casi.
+
 Messaggi vietati: "Errore", "Qualcosa è andato storto", codici tecnici. Messaggi corretti: "Questo conto è stato chiuso da un altro dispositivo. Aprine uno nuovo?"
 
 ---
