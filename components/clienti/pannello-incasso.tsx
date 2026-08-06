@@ -1,0 +1,190 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { centesimiInCampo, formatEuro, parseEuro } from '@/lib/dominio/denaro';
+import { scorciatoieIncasso, verificaIncasso } from '@/lib/dominio/crediti';
+import { useIncassa } from '@/lib/hooks/use-cliente';
+import type { SaldoCliente } from '@/lib/supabase/tipi';
+
+const METODI = [
+  { valore: 'contanti', etichetta: 'Contanti' },
+  { valore: 'carta', etichetta: 'Carta' },
+  { valore: 'altro', etichetta: 'Altro' },
+];
+
+interface Props {
+  cliente: SaldoCliente;
+  onChiudi: () => void;
+  onIncassato: (residuoCent: number, restoCent: number) => void;
+}
+
+export function PannelloIncasso({ cliente, onChiudi, onIncassato }: Props) {
+  // Precompilato con il dovuto: il caso più frequente è "salda tutto",
+  // e chi vuole dare meno cancella e riscrive.
+  const [testo, setTesto] = useState(() => centesimiInCampo(cliente.saldo_cent));
+  const [metodo, setMetodo] = useState('contanti');
+  const [scontrino, setScontrino] = useState(false);
+  const [errore, setErrore] = useState<string | null>(null);
+
+  const incassa = useIncassa();
+  const scorciatoie = scorciatoieIncasso(cliente.saldo_cent, null);
+
+  useEffect(() => {
+    const conTasto = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onChiudi();
+    };
+    document.addEventListener('keydown', conTasto);
+    return () => document.removeEventListener('keydown', conTasto);
+  }, [onChiudi]);
+
+  const importo = parseEuro(testo);
+  const esito = importo === null ? null : verificaIncasso(cliente.saldo_cent, importo);
+
+  async function conferma() {
+    setErrore(null);
+
+    if (importo === null) {
+      setErrore('Importo non valido. Scrivi per esempio 12,50');
+      return;
+    }
+    if (!esito || !esito.valido) {
+      setErrore(esito && !esito.valido ? esito.errore : 'Importo non valido.');
+      return;
+    }
+
+    await incassa.mutateAsync({
+      clienteId: cliente.id,
+      importoCent: esito.importoCent,
+      metodo,
+      scontrinoBattuto: scontrino,
+    });
+
+    onIncassato(esito.residuoCent, esito.restoCent);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end" role="dialog" aria-modal="true">
+      <button
+        type="button"
+        aria-label="Chiudi"
+        onClick={onChiudi}
+        className="absolute inset-0 bg-black/60"
+      />
+
+      <div className="relative max-h-[90dvh] w-full overflow-y-auto rounded-t-3xl bg-[var(--color-superficie)] px-5 pb-sicura pt-3">
+        <div className="flex justify-center">
+          <span className="h-1.5 w-10 rounded-full bg-[var(--color-bordo)]" />
+        </div>
+
+        <h2 className="pb-1 pt-4 text-lg font-semibold">Incassa da {cliente.nome}</h2>
+        <div className="flex items-baseline justify-between border-b border-[var(--color-bordo)] pb-3">
+          <span className="text-sm text-[var(--color-testo-tenue)]">Totale dovuto</span>
+          <span className="text-2xl font-bold tabular-nums text-[var(--color-debito)]">
+            {formatEuro(cliente.saldo_cent)}
+          </span>
+        </div>
+
+        <label className="mt-4 flex flex-col gap-1.5">
+          <span className="text-sm text-[var(--color-testo-tenue)]">Quanto ti ha dato</span>
+          <input
+            value={testo}
+            onChange={(e) => setTesto(e.target.value)}
+            inputMode="decimal"
+            className="h-16 rounded-xl border border-[var(--color-bordo)] bg-[var(--color-sfondo)] px-4 text-2xl font-semibold tabular-nums outline-none focus:border-[var(--color-accento)]"
+          />
+        </label>
+
+        {scorciatoie.length > 0 && (
+          <div className="mt-3 flex gap-2">
+            {scorciatoie.map((s) => (
+              <button
+                key={s.etichetta}
+                type="button"
+                onClick={() => setTesto(centesimiInCampo(s.importoCent))}
+                className="h-12 flex-1 rounded-lg border border-[var(--color-bordo)] px-3 text-sm"
+              >
+                {s.etichetta} · {formatEuro(s.importoCent)}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <p className="mt-4 text-sm text-[var(--color-testo-tenue)]">Come</p>
+        <div className="mt-1.5 flex gap-2">
+          {METODI.map((m) => (
+            <button
+              key={m.valore}
+              type="button"
+              onClick={() => setMetodo(m.valore)}
+              className={`h-14 flex-1 rounded-xl text-sm font-medium ${
+                metodo === m.valore
+                  ? 'bg-[var(--color-accento)] text-[var(--color-sfondo)]'
+                  : 'border border-[var(--color-bordo)] text-[var(--color-testo-tenue)]'
+              }`}
+            >
+              {m.etichetta}
+            </button>
+          ))}
+        </div>
+
+        <label className="mt-4 flex min-h-14 items-center gap-3">
+          <input
+            type="checkbox"
+            checked={scontrino}
+            onChange={(e) => setScontrino(e.target.checked)}
+            className="h-6 w-6 accent-[var(--color-accento)]"
+          />
+          <span className="text-sm">Scontrino battuto</span>
+        </label>
+
+        {/* Il conto della serva, prima di confermare */}
+        {esito?.valido && (esito.restoCent > 0 || esito.residuoCent > 0) && (
+          <div className="mt-3 rounded-xl bg-[var(--color-sfondo)] px-4 py-3 text-sm">
+            {esito.restoCent > 0 && (
+              <p className="flex justify-between">
+                <span className="text-[var(--color-testo-tenue)]">Resto da dare</span>
+                <span className="font-semibold tabular-nums">{formatEuro(esito.restoCent)}</span>
+              </p>
+            )}
+            {esito.residuoCent > 0 && (
+              <p className="flex justify-between">
+                <span className="text-[var(--color-testo-tenue)]">Resta a debito</span>
+                <span className="font-semibold tabular-nums text-[var(--color-debito)]">
+                  {formatEuro(esito.residuoCent)}
+                </span>
+              </p>
+            )}
+          </div>
+        )}
+
+        {errore && (
+          <p
+            role="alert"
+            className="mt-3 rounded-xl border border-[var(--color-debito)]/40 bg-[var(--color-debito)]/10 px-4 py-3 text-sm text-[var(--color-debito)]"
+          >
+            {errore}
+          </p>
+        )}
+
+        {/* Incassare non è reversibile: qui la conferma serve (04-UX §1) */}
+        <div className="mt-5 flex gap-3 pb-5">
+          <button
+            type="button"
+            onClick={onChiudi}
+            className="h-16 flex-1 rounded-xl border border-[var(--color-bordo)] text-[var(--color-testo-tenue)]"
+          >
+            Annulla
+          </button>
+          <button
+            type="button"
+            onClick={() => void conferma()}
+            disabled={incassa.isPending}
+            className="h-16 flex-[2] rounded-xl bg-[var(--color-positivo)] text-lg font-semibold text-[var(--color-sfondo)] active:brightness-90 disabled:opacity-60"
+          >
+            {incassa.isPending ? 'Registro…' : 'CONFERMA'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

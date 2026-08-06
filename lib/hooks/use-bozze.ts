@@ -21,7 +21,7 @@ import {
 } from '@/lib/offline/bozze';
 import { accoda } from '@/lib/offline/coda';
 import { sollecitaSync } from '@/lib/offline/sync';
-import { CHIAVE_CLIENTI } from './use-clienti';
+import { aggiornaSaldoInCache } from './use-clienti';
 import { nuovoId } from '@/lib/utils';
 
 /** Tutte le bozze aperte, in ordine dalla più recente. */
@@ -102,7 +102,18 @@ export function useApriConto() {
 
 export type ModoConferma =
   | { tipo: 'a_credito' }
-  | { tipo: 'incassato'; metodo: string; scontrinoBattuto: boolean };
+  | {
+      tipo: 'incassato';
+      /**
+       * Quanto si registra come pagamento. Non è per forza il totale del
+       * conto: può essere di meno (paga in parte) o di più (salda anche il
+       * debito vecchio). Deve arrivare già verificato da
+       * `verificaChiusuraConto`, che è dove sta la regola.
+       */
+      importoCent: number;
+      metodo: string;
+      scontrinoBattuto: boolean;
+    };
 
 /**
  * Trasforma una bozza in un conto vero (DEC-08).
@@ -116,24 +127,30 @@ export function useConfermaConto() {
 
   return async function conferma(bozza: Bozza, modo: ModoConferma): Promise<void> {
     const totale = totaleBozza(bozza);
+    // Gli orari li fissa il dispositivo adesso, non il server al momento
+    // dell'arrivo: offline la differenza può essere di ore.
+    const confermatoIl = new Date().toISOString();
 
     await accoda(nuovoId(), {
       tipo: 'salva_conto',
       dati: {
         id: bozza.id,
         clienteId: bozza.clienteId,
+        apertoIl: new Date(bozza.apertaIl).toISOString(),
+        confermatoIl,
         righe: bozza.voci.map((v) => ({
           id: v.id,
           prodottoId: v.prodottoId,
           descrizione: v.descrizione,
           prezzoUnitarioCent: v.prezzoUnitarioCent,
           quantita: v.quantita,
+          creatoIl: new Date(v.battutaIl).toISOString(),
         })),
         pagamento:
           modo.tipo === 'incassato'
             ? {
                 id: nuovoId(),
-                importoCent: totale,
+                importoCent: modo.importoCent,
                 metodo: modo.metodo,
                 scontrinoBattuto: modo.scontrinoBattuto,
               }
@@ -144,8 +161,17 @@ export function useConfermaConto() {
     await eliminaBozza(bozza.id);
     sollecitaSync();
 
-    // Il saldo del cliente è cambiato: la prossima lettura deve rifarla.
-    void queryClient.invalidateQueries({ queryKey: CHIAVE_CLIENTI });
+    // Il conto addebita `totale`, il pagamento scarica `pagato`: quello che
+    // resta è la variazione del saldo. Vale in tutti i casi — a credito
+    // (pagato = 0), saldato in pieno (differenza zero), pagato in parte
+    // (sale un po'), pagato oltre per coprire il vecchio debito (scende).
+    if (bozza.clienteId) {
+      const pagato = modo.tipo === 'incassato' ? modo.importoCent : 0;
+      aggiornaSaldoInCache(queryClient, bozza.clienteId, totale - pagato);
+      void queryClient.invalidateQueries({
+        queryKey: ['estratto-conto', bozza.clienteId],
+      });
+    }
   };
 }
 
