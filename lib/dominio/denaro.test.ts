@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   centesimi,
+  centesimiInCampo,
   parseEuro,
   formatEuro,
   sommaCentesimi,
@@ -118,6 +119,7 @@ describe('somma e moltiplicazione', () => {
   });
 
   it('regge un conto lungo senza deriva', () => {
+    // (vedi anche centesimiInCampo più sotto)
     // 1000 caffè: con i float questo accumulerebbe errore
     const righe = Array.from({ length: 1000 }, () => 120);
     expect(sommaCentesimi(righe)).toBe(120_000);
@@ -179,5 +181,30 @@ describe('lettura del saldo', () => {
 
   it('un pagamento eccedente diventa un acconto', () => {
     expect(norm(descriviSaldo(500 - 2000))).toBe('acconto di 15,00 €');
+  });
+});
+
+describe('centesimiInCampo', () => {
+  it('scrive senza simbolo e senza separatore di migliaia', () => {
+    expect(centesimiInCampo(1250)).toBe('12,50');
+    expect(centesimiInCampo(123450)).toBe('1234,50');
+  });
+
+  it('tiene gli zeri dove servono', () => {
+    expect(centesimiInCampo(0)).toBe('0,00');
+    expect(centesimiInCampo(5)).toBe('0,05');
+    expect(centesimiInCampo(50)).toBe('0,50');
+    expect(centesimiInCampo(100)).toBe('1,00');
+  });
+
+  it('è il giro inverso di parseEuro: quello che scrive, parseEuro lo rilegge', () => {
+    for (const c of [0, 1, 5, 99, 100, 120, 999, 1000, 3290, 123456]) {
+      expect(parseEuro(centesimiInCampo(c))).toBe(c);
+    }
+  });
+
+  it('formatEuro invece non torna indietro: ecco perché questa funzione esiste', () => {
+    // "1.234,50 €" non è un importo valido per parseEuro
+    expect(parseEuro(formatEuro(123450))).toBeNull();
   });
 });

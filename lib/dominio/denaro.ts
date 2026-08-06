@@ -78,6 +78,25 @@ export function formatEuro(importoCent: number, opzioni?: { segnoPiu?: boolean }
   return opzioni?.segnoPiu && importoCent > 0 ? `+${testo}` : testo;
 }
 
+/**
+ * Come si scrive un importo **dentro un campo di testo**: "12,50", senza
+ * simbolo e senza separatore delle migliaia.
+ *
+ * Esiste perché `formatEuro` non va bene qui: produce "1.234,50 €", che
+ * rimesso in `parseEuro` non torna indietro. Il giro `centesimiInCampo` →
+ * `parseEuro` invece è chiuso, ed è quello che serve a un campo precompilato
+ * che l'utente può correggere.
+ *
+ * Non divide per 100: taglia le ultime due cifre dell'intero. Nessun numero
+ * con la virgola viene mai creato, quindi non c'è niente da arrotondare
+ * (DEC-04).
+ */
+export function centesimiInCampo(importoCent: number): string {
+  const valore = Math.abs(centesimi(importoCent));
+  const cifre = String(valore).padStart(3, '0');
+  return `${cifre.slice(0, -2)},${cifre.slice(-2)}`;
+}
+
 /** Somma una lista di importi restando nel dominio degli interi. */
 export function sommaCentesimi(valori: readonly number[]): Centesimi {
   return centesimi(valori.reduce((acc, v) => acc + v, 0));
