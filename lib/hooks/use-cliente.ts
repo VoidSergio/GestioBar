@@ -12,6 +12,7 @@ import {
   type Ruolo,
 } from '@/lib/dominio/clienti';
 import { ErroreLettura } from '@/lib/dominio/errori';
+import { verificaSpostamento, type RigaSpostabile } from '@/lib/dominio/spostamenti';
 import { aggiornaSaldoInCache, CHIAVE_CLIENTI } from './use-clienti';
 import { nuovoId } from '@/lib/utils';
 
@@ -156,6 +157,60 @@ export function useRimuoviCliente() {
       );
       queryClient.removeQueries({ queryKey: ['cliente', dati.cliente.id] });
       queryClient.removeQueries({ queryKey: ['estratto-conto', dati.cliente.id] });
+    },
+  });
+}
+
+export interface DatiSpostamento {
+  riga: RigaSpostabile;
+  quantita: number;
+  clienteOrigineId: string;
+  clienteDestinazioneId: string;
+}
+
+/**
+ * Sposta una consumazione da un cliente a un altro.
+ *
+ * Le regole stanno in `verificaSpostamento`; qui c'è l'esecuzione. Gli id li
+ * genera il dispositivo, come sempre, così l'operazione è ripetibile senza
+ * creare doppioni anche se la risposta si perde.
+ */
+export function useSpostaRiga() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (dati: DatiSpostamento): Promise<number> => {
+      const esito = verificaSpostamento(dati);
+      if (!esito.valido) throw new Error(esito.errore);
+
+      await accoda(nuovoId(), {
+        tipo: 'sposta_riga',
+        dati: {
+          rigaOrigineId: dati.riga.id,
+          contoOrigineId: dati.riga.contoId,
+          stornoId: nuovoId(),
+          clienteDestinazioneId: dati.clienteDestinazioneId,
+          contoDestinazioneId: nuovoId(),
+          rigaDestinazioneId: nuovoId(),
+          quantita: esito.quantita,
+          quandoIl: new Date().toISOString(),
+        },
+      });
+      sollecitaSync();
+
+      return esito.importoCent;
+    },
+
+    onSuccess: (importoCent, dati) => {
+      // Il debito si sposta: scende di qua, sale di là. Sono due clienti
+      // diversi, quindi due aggiornamenti di segno opposto.
+      aggiornaSaldoInCache(queryClient, dati.clienteOrigineId, -importoCent);
+      aggiornaSaldoInCache(queryClient, dati.clienteDestinazioneId, importoCent);
+
+      void queryClient.invalidateQueries({ queryKey: ['estratto-conto', dati.clienteOrigineId] });
+      void queryClient.invalidateQueries({
+        queryKey: ['estratto-conto', dati.clienteDestinazioneId],
+      });
     },
   });
 }

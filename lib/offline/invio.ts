@@ -93,6 +93,68 @@ export async function inviaOperazione(opId: string, op: Operazione): Promise<Esi
         return { ok: true, messaggio: 'ok' };
       }
 
+      case 'sposta_riga': {
+        // Tre scritture in ordine, tutte idempotenti sul reinvio:
+        //   1. lo storno parziale sul conto di chi cede
+        //   2. il conto nuovo intestato a chi offre
+        //   3. la riga su quel conto, allo stesso prezzo congelato
+        //
+        // Il prezzo e la descrizione si rileggono dalla riga originale e non
+        // si prendono dal catalogo: se il listino è cambiato nel frattempo,
+        // spostare un caffè non deve cambiarne il prezzo (DEC-05).
+        const { data: originale, error: erroreLettura } = await sb
+          .from('righe_conto')
+          .select('descrizione, prezzo_unitario_cent, prodotto_id')
+          .eq('id', op.dati.rigaOrigineId)
+          .maybeSingle();
+
+        if (erroreLettura) return esito(erroreLettura);
+        if (!originale) {
+          return {
+            ok: false,
+            codice: 'riga_assente',
+            messaggio: 'La consumazione da spostare non esiste più.',
+          };
+        }
+
+        const { error: erroreStorno } = await sb.from('righe_conto').insert({
+          id: op.dati.stornoId,
+          conto_id: op.dati.contoOrigineId,
+          prodotto_id: originale.prodotto_id,
+          descrizione: originale.descrizione,
+          prezzo_unitario_cent: originale.prezzo_unitario_cent,
+          quantita: -op.dati.quantita,
+          storno_di: op.dati.rigaOrigineId,
+          creato_il: op.dati.quandoIl,
+          op_id: op.dati.stornoId,
+        });
+        if (erroreStorno && !eGiaRegistrato(erroreStorno)) return esito(erroreStorno);
+
+        const { error: erroreConto } = await sb.from('conti').insert({
+          id: op.dati.contoDestinazioneId,
+          cliente_id: op.dati.clienteDestinazioneId,
+          stato: 'chiuso',
+          aperto_il: op.dati.quandoIl,
+          chiuso_il: op.dati.quandoIl,
+          op_id: op.dati.contoDestinazioneId,
+        });
+        if (erroreConto && !eGiaRegistrato(erroreConto)) return esito(erroreConto);
+
+        const { error: erroreRiga } = await sb.from('righe_conto').insert({
+          id: op.dati.rigaDestinazioneId,
+          conto_id: op.dati.contoDestinazioneId,
+          prodotto_id: originale.prodotto_id,
+          descrizione: originale.descrizione,
+          prezzo_unitario_cent: originale.prezzo_unitario_cent,
+          quantita: op.dati.quantita,
+          creato_il: op.dati.quandoIl,
+          op_id: op.dati.rigaDestinazioneId,
+        });
+        if (erroreRiga && !eGiaRegistrato(erroreRiga)) return esito(erroreRiga);
+
+        return { ok: true, messaggio: 'ok' };
+      }
+
       case 'disattiva_cliente': {
         const { error } = await sb.from('clienti').update({ attivo: false }).eq('id', op.dati.id);
         return esito(error);

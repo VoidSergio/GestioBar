@@ -11,11 +11,13 @@ Gestionale per un bar, mobile-first, in italiano. Serve a sapere con certezza **
 
 Stack: Next.js 16 (App Router, Turbopack) + TypeScript strict + Supabase + TanStack Query + Tailwind 4.
 
-**Stato:** Fase 0 chiusa, app pubblicata su Netlify. Fatti T-06 (accesso), T-07 (cache offline), T-08 (clienti), T-09 (coda), T-10 (griglia), T-11 (apertura conto), T-12 (righe), T-13 (chiusura conto), T-14 (scheda cliente), T-15 (crediti). 62 prodotti a catalogo, 187 test verdi. Il giro completo funziona. Il prossimo task è **T-16** in `docs/05-ROADMAP.md`.
+**Stato:** Fase 0 chiusa, app pubblicata su Netlify. Fatti T-06 (accesso), T-07 (cache offline), T-08 (clienti), T-09 (coda), T-10 (griglia), T-11 (apertura conto), T-12 (righe), T-13 (chiusura conto), T-14 (scheda cliente), T-15 (crediti). 62 prodotti a catalogo, 201 test verdi. Il giro completo funziona. Il prossimo task è **T-16** in `docs/05-ROADMAP.md`.
 
 **Il saldo si legge da un posto solo, ma sta in due cache.** L'elenco (`clienti-con-saldo`) e la scheda (`['cliente', id]`) contengono lo stesso numero: chi lo muove usa `aggiornaSaldoInCache()` in `lib/hooks/use-clienti.ts`, che le tocca entrambe. **Mai `invalidateQueries` subito dopo `accoda()`**: la rilettura parte prima che la scrittura arrivi al server e ricasca sul valore vecchio marcandolo fresco (`03-ARCHITETTURA.md` §4.3).
 
 **Un conto confermato nasce sempre `chiuso`**, anche a credito: `stato` dice se lo stai ancora battendo, non se è stato pagato. Il debito vive in `v_saldo_clienti`.
+
+**Spostare una consumazione a un altro cliente è uno storno parziale più un addebito**, mai un `update` della riga: `lib/dominio/spostamenti.ts`. Il prezzo si copia dalla riga originale, non dal catalogo.
 
 **Un cliente con movimenti non si cancella, si disattiva.** La regola sta in `comeRimuovereCliente()` (`lib/dominio/clienti.ts`); il `delete` su `clienti` è riservato al titolare da RLS. Chi cancella deve controllare `count`, non solo `error`: RLS che vieta restituisce zero righe toccate senza errore.
 

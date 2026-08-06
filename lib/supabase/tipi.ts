@@ -158,6 +158,12 @@ export type MovimentoEstrattoConto = {
   conto_numero: number | null;
   movimento_id: string;
   e_storno: boolean;
+  /** su che conto sta la riga: serve per spostarla altrove */
+  conto_id: string | null;
+  /** zero sui pagamenti */
+  prezzo_unitario_cent: number;
+  /** quanti pezzi di questa riga sono già stati stornati o offerti ad altri */
+  quantita_stornata: number;
 };
 
 /**

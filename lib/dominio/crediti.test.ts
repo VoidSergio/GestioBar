@@ -32,6 +32,9 @@ function mov(
     conto_numero: 1,
     movimento_id: `${data}-${importoCent}`,
     e_storno: false,
+    conto_id: 'con-1',
+    prezzo_unitario_cent: Math.abs(importoCent),
+    quantita_stornata: 0,
   };
 }
 

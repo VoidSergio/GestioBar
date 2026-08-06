@@ -11,6 +11,9 @@ import { IndicatoreSync } from '@/components/shell/indicatore-sync';
 import { AvvisoLettura } from '@/components/shell/avviso-lettura';
 import { PannelloIncasso } from './pannello-incasso';
 import { PannelloRimozione } from './pannello-rimozione';
+import { PannelloSpostamento } from './pannello-spostamento';
+import { pezziSpostabili, type RigaSpostabile } from '@/lib/dominio/spostamenti';
+import type { MovimentoConSaldo } from '@/lib/dominio/crediti';
 
 export function SchedaCliente({ id, ruolo }: { id: string; ruolo: Ruolo | null }) {
   const router = useRouter();
@@ -29,6 +32,7 @@ export function SchedaCliente({ id, ruolo }: { id: string; ruolo: Ruolo | null }
   const [rimozione, setRimozione] = useState(false);
   const [esito, setEsito] = useState<string | null>(null);
   const [congedo, setCongedo] = useState<string | null>(null);
+  const [daSpostare, setDaSpostare] = useState<RigaSpostabile | null>(null);
 
   // Tolto il cliente, questa schermata non ha più un soggetto: si dice com'è
   // andata e si torna all'elenco, invece di mostrare "cliente non trovato".
@@ -209,28 +213,7 @@ export function SchedaCliente({ id, ruolo }: { id: string; ruolo: Ruolo | null }
               </p>
               <ul className="divide-y divide-[var(--color-bordo)]">
                 {g.movimenti.map((m) => (
-                  <li key={m.movimento_id} className="flex items-baseline gap-3 px-5 py-2.5">
-                    <span
-                      className={`min-w-0 flex-1 text-sm ${
-                        m.e_storno ? 'text-[var(--color-testo-tenue)] line-through' : ''
-                      }`}
-                    >
-                      {m.descrizione}
-                      {m.quantita > 1 && ` ×${m.quantita}`}
-                    </span>
-                    <span
-                      className={`shrink-0 tabular-nums ${
-                        m.tipo === 'pagamento' ? 'font-semibold text-[var(--color-positivo)]' : ''
-                      }`}
-                    >
-                      {formatEuro(m.importo_cent, { segnoPiu: false })}
-                    </span>
-                    <span className="w-20 shrink-0 text-right text-xs tabular-nums text-[var(--color-testo-tenue)]">
-                      {descriviSaldo(m.saldoProgressivoCent) === 'in pari'
-                        ? '—'
-                        : formatEuro(m.saldoProgressivoCent)}
-                    </span>
-                  </li>
+                  <RigaMovimento key={m.movimento_id} movimento={m} onSposta={setDaSpostare} />
                 ))}
               </ul>
             </div>
@@ -268,6 +251,18 @@ export function SchedaCliente({ id, ruolo }: { id: string; ruolo: Ruolo | null }
         />
       )}
 
+      {daSpostare && (
+        <PannelloSpostamento
+          riga={daSpostare}
+          clienteOrigine={cliente}
+          onChiudi={() => setDaSpostare(null)}
+          onFatto={(messaggio) => {
+            setDaSpostare(null);
+            setEsito(messaggio);
+          }}
+        />
+      )}
+
       {rimozione && (
         <PannelloRimozione
           cliente={cliente}
@@ -280,5 +275,83 @@ export function SchedaCliente({ id, ruolo }: { id: string; ruolo: Ruolo | null }
         />
       )}
     </main>
+  );
+}
+
+/**
+ * Una riga dell'estratto conto.
+ *
+ * Le consumazioni ancora spostabili sono toccabili: si apre "chi lo offre?".
+ * Pagamenti e storni no — un pagamento non si intesta a un altro, e uno
+ * storno è già una correzione. Mostrarli inerti evita di far provare un
+ * gesto che verrebbe rifiutato.
+ */
+function RigaMovimento({
+  movimento: m,
+  onSposta,
+}: {
+  movimento: MovimentoConSaldo;
+  onSposta: (riga: RigaSpostabile) => void;
+}) {
+  const riga: RigaSpostabile | null =
+    m.tipo === 'consumazione' && m.conto_id !== null
+      ? {
+          id: m.movimento_id,
+          contoId: m.conto_id,
+          descrizione: m.descrizione,
+          prezzoUnitarioCent: m.prezzo_unitario_cent,
+          quantita: m.quantita,
+          quantitaGiaStornata: m.quantita_stornata,
+          eStorno: m.e_storno,
+        }
+      : null;
+
+  const spostabile = riga !== null && pezziSpostabili(riga) > 0;
+
+  const contenuto = (
+    <>
+      <span
+        className={`min-w-0 flex-1 text-sm ${
+          m.e_storno ? 'text-[var(--color-testo-tenue)] line-through' : ''
+        }`}
+      >
+        {m.descrizione}
+        {m.quantita > 1 && ` \u00d7${m.quantita}`}
+        {m.quantita_stornata > 0 && !m.e_storno && (
+          <span className="block text-xs text-[var(--color-testo-tenue)]">
+            {m.quantita_stornata} offerti da altri
+          </span>
+        )}
+      </span>
+      <span
+        className={`shrink-0 tabular-nums ${
+          m.tipo === 'pagamento' ? 'font-semibold text-[var(--color-positivo)]' : ''
+        }`}
+      >
+        {formatEuro(m.importo_cent, { segnoPiu: false })}
+      </span>
+      <span className="w-20 shrink-0 text-right text-xs tabular-nums text-[var(--color-testo-tenue)]">
+        {descriviSaldo(m.saldoProgressivoCent) === 'in pari'
+          ? '\u2014'
+          : formatEuro(m.saldoProgressivoCent)}
+      </span>
+    </>
+  );
+
+  if (!spostabile || !riga) {
+    return <li className="flex items-baseline gap-3 px-5 py-2.5">{contenuto}</li>;
+  }
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onSposta(riga)}
+        aria-label={`Sposta ${m.descrizione} a un altro cliente`}
+        className="flex min-h-14 w-full items-baseline gap-3 px-5 py-2.5 text-left active:bg-[var(--color-superficie)]"
+      >
+        {contenuto}
+      </button>
+    </li>
   );
 }

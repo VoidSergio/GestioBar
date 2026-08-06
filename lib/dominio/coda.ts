@@ -70,6 +70,29 @@ export type Operazione =
       tipo: 'elimina_cliente';
       dati: { id: string; nome: string };
     }
+  | {
+      /**
+       * Sposta una consumazione da un cliente a un altro (Luca offre a
+       * Michele uno dei tre caffè). Due movimenti, non una modifica: uno
+       * storno parziale sull'origine e un conto nuovo sulla destinazione,
+       * con il prezzo copiato dalla riga originale (DEC-05).
+       */
+      tipo: 'sposta_riga';
+      dati: {
+        /** la riga da cui si toglie */
+        rigaOrigineId: string;
+        contoOrigineId: string;
+        /** id dello storno da creare sull'origine */
+        stornoId: string;
+        clienteDestinazioneId: string;
+        /** conto nuovo intestato alla destinazione */
+        contoDestinazioneId: string;
+        rigaDestinazioneId: string;
+        quantita: number;
+        /** momento dello spostamento, preso dal dispositivo (ISO 8601) */
+        quandoIl: string;
+      };
+    }
   | { tipo: 'apri_conto'; dati: { id: string; clienteId: string | null } }
   | {
       tipo: 'aggiungi_riga';
@@ -130,6 +153,7 @@ export function produce(op: Operazione): string | null {
     case 'chiudi_conto':
     case 'disattiva_cliente':
     case 'elimina_cliente':
+    case 'sposta_riga':
       return null;
   }
 }
@@ -165,6 +189,9 @@ export function richiede(op: Operazione): string[] {
       // Un cliente creato offline e cancellato subito dopo: la cancellazione
       // non può partire prima che il cliente esista sul server.
       return [op.dati.id];
+    case 'sposta_riga':
+      // Servono la riga da cui si toglie e la persona a cui si addebita.
+      return [op.dati.rigaOrigineId, op.dati.clienteDestinazioneId];
   }
 }
 
@@ -326,6 +353,8 @@ export function descriviOperazione(op: Operazione): string {
       return 'Pagamento';
     case 'chiudi_conto':
       return 'Chiusura di un conto';
+    case 'sposta_riga':
+      return `Spostamento di ${op.dati.quantita} ${op.dati.quantita === 1 ? 'pezzo' : 'pezzi'}`;
     case 'disattiva_cliente':
       return `Disattivazione di ${op.dati.nome}`;
     case 'elimina_cliente':

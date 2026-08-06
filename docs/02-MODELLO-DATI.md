@@ -262,6 +262,10 @@ create index idx_conti_cliente on conti (cliente_id, aperto_il desc);
 
 Il permesso di `delete` su `clienti` è riservato al titolare da `0010_cancellazione_cliente.sql`. RLS non dà errore quando vieta: restituisce zero righe toccate, quindi chi cancella deve controllare `count` e non solo `error`.
 
+**Una riga si storna anche in parte.** Fino alla 0013 `idx_storno_unico` imponeva un solo storno per riga: con lo storno "tutto o niente" era la regola giusta. Serve però spostare una consumazione da un cliente a un altro — Luca offre a Michele uno dei tre caffè — e di storni parziali sulla stessa riga ce ne possono essere più d'uno. L'invariante che conta non era "una volta sola", era **non si storna più di quanto è stato venduto**: adesso la garantisce il trigger `trg_storni_non_eccedono`, che somma gli storni già fatti e rifiuta quello di troppo. Uno storno di uno storno resta vietato.
+
+**Spostare una consumazione non modifica niente.** È uno storno parziale sul conto di chi cede più un conto nuovo intestato a chi offre, con descrizione e prezzo **copiati dalla riga originale** (DEC-05): se il listino è cambiato nel frattempo, spostare un caffè non ne cambia il prezzo. Entrambi i movimenti restano visibili sui rispettivi estratti conto, ed è per questo che l'operazione si disfa spostando indietro invece che con un `delete`.
+
 **`cliente_id` può essere nullo:** è la consumazione al banco pagata subito, senza anagrafica.
 
 **Un solo conto aperto per cliente:** garantito dal database, non dall'applicazione. Se due dispositivi provano a creare un conto per Mario nello stesso momento, uno dei due fallisce e l'app usa quello esistente. Senza questo vincolo il credito di un cliente si spezzerebbe su conti paralleli.
