@@ -259,6 +259,12 @@ create index idx_conti_cliente on conti (cliente_id, aperto_il desc);
 
 **Un solo conto aperto per cliente:** garantito dal database, non dall'applicazione. Se due dispositivi provano a creare un conto per Mario nello stesso momento, uno dei due fallisce e l'app usa quello esistente. Senza questo vincolo il credito di un cliente si spezzerebbe su conti paralleli.
 
+**`stato` dice se il conto si sta ancora battendo, non se è stato pagato.** Con DEC-08 la composizione avviene in una bozza locale, quindi un conto che arriva al database è già finito: `salva_conto` lo scrive sempre con `stato = 'chiuso'`, anche quando è lasciato a credito. Il debito si legge da `v_saldo_clienti` (righe meno pagamenti), mai dallo stato del conto.
+
+Di conseguenza, in Fase 1 `idx_un_conto_aperto_per_cliente` e la vista `v_conti_aperti` non entrano mai in gioco: restano per la Fase 4, quando le bozze si sposteranno sul server e torneranno `apri_conto` e `aggiungi_riga`. Scrivere i conti a credito come `'aperto'` faceva fallire il secondo conto dello stesso cliente contro quell'indice.
+
+**Gli orari li fissa il dispositivo, non il server.** `conti.aperto_il`, `conti.chiuso_il`, `righe_conto.creato_il` e `pagamenti.creato_il` viaggiano dentro l'operazione `salva_conto` con il valore preso al banco. Il default `now()` resta come rete di sicurezza, ma non è quello che si usa: offline segnerebbe il momento in cui la coda si svuota, e i caffè delle sette risulterebbero venduti a mezzogiorno. Per le righe l'orario è quello del **primo** pezzo della voce: due caffè sono una riga ×2, e conta quando è cominciata l'ordinazione.
+
 `tavolo` esiste ma non è usato in Fase 1 (vedi §4 di `01-VISIONE-E-DECISIONI.md`).
 
 ### 3.6 Righe di conto

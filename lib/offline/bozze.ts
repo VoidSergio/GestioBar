@@ -10,6 +10,22 @@ import { dbLocale } from './db';
  * Qui si legge e si scrive, niente altro.
  */
 
+/**
+ * Le bozze scritte prima dell'orario per riga non hanno `battutaIl`.
+ * Si ricade sull'apertura del conto: sbagliato di qualche minuto, ma è un
+ * orario plausibile invece di un buco o di un `Invalid Date`.
+ */
+function normalizza(b: Bozza): Bozza {
+  if (b.voci.every((v) => typeof v.battutaIl === 'number')) return b;
+  return {
+    ...b,
+    voci: b.voci.map((v) => ({
+      ...v,
+      battutaIl: typeof v.battutaIl === 'number' ? v.battutaIl : b.apertaIl,
+    })),
+  };
+}
+
 type Ascoltatore = (bozze: Bozza[]) => void;
 const ascoltatori = new Set<Ascoltatore>();
 
@@ -27,7 +43,8 @@ export function ascoltaBozze(a: Ascoltatore): () => void {
 export async function leggiBozze(): Promise<Bozza[]> {
   try {
     const db = await dbLocale();
-    return await db.getAllFromIndex('bozze', 'per-apertura');
+    const bozze = await db.getAllFromIndex('bozze', 'per-apertura');
+    return bozze.map(normalizza);
   } catch {
     return [];
   }
@@ -36,7 +53,8 @@ export async function leggiBozze(): Promise<Bozza[]> {
 export async function leggiBozza(id: string): Promise<Bozza | null> {
   try {
     const db = await dbLocale();
-    return (await db.get('bozze', id)) ?? null;
+    const bozza = await db.get('bozze', id);
+    return bozza ? normalizza(bozza) : null;
   } catch {
     return null;
   }

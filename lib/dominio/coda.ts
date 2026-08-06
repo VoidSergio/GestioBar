@@ -26,12 +26,23 @@ export type Operazione =
       dati: {
         id: string;
         clienteId: string | null;
+        /**
+         * Orari presi dal dispositivo, non dal server (ISO 8601).
+         *
+         * Il default `now()` del database segna il momento in cui la scrittura
+         * arriva, che offline può essere ore dopo. Per sapere davvero a che ora
+         * si lavora, l'orario deve partire da chi batte.
+         */
+        apertoIl: string;
+        confermatoIl: string;
         righe: Array<{
           id: string;
           prodottoId: string | null;
           descrizione: string;
           prezzoUnitarioCent: number;
           quantita: number;
+          /** quando è stato battuto il primo pezzo di questa riga */
+          creatoIl: string;
         }>;
         /** presente se il conto è stato incassato subito */
         pagamento: {

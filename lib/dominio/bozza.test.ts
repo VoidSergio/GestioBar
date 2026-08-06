@@ -35,6 +35,30 @@ function conCaffe(volte: number): Bozza {
   return b;
 }
 
+describe('orario della voce', () => {
+  it("la voce porta l'orario in cui è stata battuta", () => {
+    const b = aggiungi(nuovaBozza('c1', null, 'Banco', ORA), CAFFE, ORA + 5000);
+    expect(b.voci[0]!.battutaIl).toBe(ORA + 5000);
+  });
+
+  it("il secondo caffè non sposta l'orario del primo", () => {
+    let b = aggiungi(nuovaBozza('c1', null, 'Banco', ORA), CAFFE, ORA + 1000);
+    b = aggiungi(b, CAFFE, ORA + 90_000);
+    expect(b.voci).toHaveLength(1);
+    expect(b.voci[0]!.quantita).toBe(2);
+    expect(b.voci[0]!.battutaIl).toBe(ORA + 1000);
+  });
+
+  it('prodotti diversi hanno orari diversi', () => {
+    let b = aggiungi(nuovaBozza('c1', null, 'Banco', ORA), CAFFE, ORA + 1000);
+    b = aggiungi(b, ICHNUSA, ORA + 60_000);
+    const caffe = b.voci.find((v) => v.prodottoId === 'p-caffe');
+    const birra = b.voci.find((v) => v.prodottoId === 'p-ichnusa');
+    expect(caffe!.battutaIl).toBe(ORA + 1000);
+    expect(birra!.battutaIl).toBe(ORA + 60_000);
+  });
+});
+
 describe('aggiungi', () => {
   it('due caffè fanno UNA voce ×2, non due righe', () => {
     const b = conCaffe(2);

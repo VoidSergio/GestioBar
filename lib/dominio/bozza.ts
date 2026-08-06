@@ -31,6 +31,18 @@ export interface VoceBozza {
   descrizione: string;
   prezzoUnitarioCent: number;
   quantita: number;
+  /**
+   * Quando è stato battuto il primo pezzo di questa voce.
+   *
+   * Finisce in `righe_conto.creato_il`. Senza, il database userebbe il momento
+   * in cui la riga arriva al server: dopo mezz'ora senza rete, i tre caffè
+   * delle sette risulterebbero venduti alle sette e mezza.
+   *
+   * È l'orario del primo tap, non dell'ultimo: due caffè sono una riga ×2
+   * (vedi `aggiungi`), quindi l'orario è quello in cui l'ordinazione è
+   * cominciata. Per il ritmo della giornata è la cosa giusta.
+   */
+  battutaIl: number;
 }
 
 export interface Bozza {
@@ -95,6 +107,7 @@ export function aggiungi(bozza: Bozza, scelto: ProdottoScelto, adesso = Date.now
         descrizione: scelto.descrizione,
         prezzoUnitarioCent: scelto.prezzoUnitarioCent,
         quantita: 1,
+        battutaIl: adesso,
       },
       ...bozza.voci,
     ],

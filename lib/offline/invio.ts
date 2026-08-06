@@ -37,11 +37,20 @@ export async function inviaOperazione(opId: string, op: Operazione): Promise<Esi
         // Un conto confermato arriva tutto insieme (DEC-08): l'intestazione,
         // tutte le righe in un solo insert, e l'eventuale pagamento.
         // Due o tre chiamate per conto invece di una per prodotto.
+        //
+        // Il conto nasce SEMPRE chiuso, anche a credito. Con DEC-08 la
+        // composizione è finita al momento della conferma: `stato` dice se il
+        // conto si sta ancora battendo, non se è stato pagato. Il debito vive
+        // in `v_saldo_clienti` (righe meno pagamenti), non qui.
+        //
+        // Lasciarlo aperto rompeva il secondo conto a credito dello stesso
+        // cliente contro `idx_un_conto_aperto_per_cliente`.
         const { error: erroreConto } = await sb.from('conti').insert({
           id: op.dati.id,
           cliente_id: op.dati.clienteId,
-          stato: op.dati.pagamento ? 'chiuso' : 'aperto',
-          chiuso_il: op.dati.pagamento ? new Date().toISOString() : null,
+          stato: 'chiuso',
+          aperto_il: op.dati.apertoIl,
+          chiuso_il: op.dati.confermatoIl,
           op_id: opId,
         });
 
@@ -58,6 +67,8 @@ export async function inviaOperazione(opId: string, op: Operazione): Promise<Esi
               descrizione: r.descrizione,
               prezzo_unitario_cent: r.prezzoUnitarioCent,
               quantita: r.quantita,
+              // Orario del banco, non dell'arrivo al server
+              creato_il: r.creatoIl,
               // op_id univoco per riga, derivato da quello dell'operazione
               op_id: r.id,
             })),
@@ -73,6 +84,7 @@ export async function inviaOperazione(opId: string, op: Operazione): Promise<Esi
             importo_cent: op.dati.pagamento.importoCent,
             metodo: op.dati.pagamento.metodo as 'contanti' | 'carta' | 'bonifico' | 'altro',
             scontrino_battuto: op.dati.pagamento.scontrinoBattuto,
+            creato_il: op.dati.confermatoIl,
             op_id: op.dati.pagamento.id,
           });
           if (errorePagamento && !eGiaRegistrato(errorePagamento)) return esito(errorePagamento);
