@@ -39,122 +39,114 @@ Versioni effettivamente installate e verificate (build, test e lint passano):
 
 ## 2. Struttura del progetto
 
-Le voci con ✅ esistono già; le altre sono da costruire seguendo `05-ROADMAP.md`.
+Albero verificato sul codice al 6 agosto 2026. Le voci con 🔜 non esistono ancora e portano il task che le farà nascere.
 
 ```
 gestionale-bar/
 ├── app/
-│   ├── layout.tsx                  ✅ shell, metadata, PWA
-│   ├── page.tsx                    ✅ ora diagnostica setup → diventerà la HOME (T-11)
-│   ├── globals.css                 ✅ palette e regole di base (@theme Tailwind 4)
+│   ├── layout.tsx                  shell, metadata, PWA
+│   ├── globals.css                 palette e regole di base (@theme Tailwind 4)
+│   ├── page.tsx                    HOME: conti aperti, credito in giro
 │   ├── login/
-│   │   ├── page.tsx                ✅ schermata di accesso
-│   │   ├── modulo-accesso.tsx      ✅ form (client)
-│   │   └── azioni.ts               ✅ accedi() ed esci()
-│   ├── conto/
-│   │   └── [id]/page.tsx           # dettaglio conto, griglia prodotti
+│   │   ├── page.tsx                schermata di accesso
+│   │   ├── modulo-accesso.tsx      form (client)
+│   │   └── azioni.ts               accedi() ed esci()
+│   ├── conto/[id]/page.tsx         composizione del conto
 │   ├── clienti/
-│   │   ├── page.tsx                ✅ elenco + ricerca + creazione
-│   │   └── [id]/page.tsx           # estratto conto, saldo, incassa  [T-14]
-│   ├── crediti/
-│   │   └── page.tsx                # chi deve soldi, per anzianità
-│   ├── listino/
-│   │   └── page.tsx                # gestione prodotti          [Fase 1, uso raro]
-│   ├── cassa/
-│   │   └── page.tsx                # chiusura giornaliera       [Fase 2]
-│   ├── magazzino/
-│   │   └── page.tsx                #                            [Fase 3]
-│   └── api/
-│       └── health/route.ts
+│   │   ├── page.tsx                elenco, ricerca, creazione
+│   │   └── [id]/page.tsx           scheda: saldo, estratto conto, incassa
+│   ├── crediti/page.tsx            chi deve soldi, per anzianità
+│   ├── scontrini/page.tsx          battuto e non battuto, per giornata
+│   ├── altro/page.tsx              quarta scheda della tab bar
+│   └── listino/page.tsx            🔜 T-16
 │
 ├── components/
-│   ├── ui/                         # shadcn: button, dialog, input, sheet…
 │   ├── conto/
-│   │   ├── griglia-prodotti.tsx    ✅
-│   │   ├── pannello-varianti.tsx   ✅
-│   │   ├── righe-conto.tsx         ✅ voci raggruppate con − e +
-│   │   ├── barra-totale.tsx        #                                 [T-12]
-│   │   └── dialog-pagamento.tsx    #                                 [T-13]
+│   │   ├── schermata-conto.tsx     griglia + righe + barra azioni
+│   │   ├── griglia-prodotti.tsx    riquadri per categoria
+│   │   ├── pannello-varianti.tsx   ▾ e pressione prolungata
+│   │   ├── righe-conto.tsx         voci raggruppate con − e +
+│   │   └── pannello-pagamento.tsx  chiusura conto (04-UX §6)
 │   ├── clienti/
-│   │   ├── elenco-clienti.tsx      ✅
-│   │   ├── modulo-nuovo-cliente.tsx ✅
-│   │   ├── ricerca-cliente.tsx     # selettore per aprire un conto   [T-11]
-│   │   └── estratto-conto.tsx      #                                 [T-14]
+│   │   ├── elenco-clienti.tsx
+│   │   ├── scheda-cliente.tsx      saldo, movimenti, azioni
+│   │   ├── modulo-nuovo-cliente.tsx
+│   │   ├── ricerca-cliente.tsx     selettore per aprire un conto
+│   │   ├── pannello-incasso.tsx    incasso di un debito maturato
+│   │   └── pannello-rimozione.tsx  cancella o disattiva (solo titolare)
+│   ├── crediti/
+│   │   ├── elenco-crediti.tsx
+│   │   └── pannello-sollecito.tsx  messaggio modificabile prima dell'invio
+│   ├── scontrini/
+│   │   └── elenco-scontrini.tsx
 │   └── shell/
-│       ├── pulsante-esci.tsx       ✅
-│       ├── provider-dati.tsx       ✅ TanStack Query + ripristino cache
-│       ├── indicatore-sync.tsx     ✅ pallino verde/ambra/rosso
-│       ├── barra-navigazione.tsx   # tab bar in basso              [T-11]
-│       └── intestazione.tsx        #                                [T-11]
+│       ├── provider-dati.tsx       TanStack Query + ripristino cache
+│       ├── barra-navigazione.tsx   tab bar: Conti, Clienti, Crediti, Altro
+│       ├── menu-altro.tsx          contenuto della quarta scheda
+│       ├── home-conti.tsx          la home
+│       ├── indicatore-sync.tsx     pallino verde/ambra/rosso
+│       ├── avviso-lettura.tsx      perché una lettura non è riuscita
+│       └── pulsante-esci.tsx
 │
 ├── lib/
 │   ├── supabase/
-│   │   ├── client.ts               ✅ client lato browser
-│   │   ├── server.ts               ✅ client lato server (SSR)
-│   │   ├── configurazione.ts       ✅ lettura .env con errori in italiano
-│   │   ├── sessione.ts             ✅ rinnovo sessione (proxy)
-│   │   ├── accesso.ts              ✅ richiediAccesso() per le pagine
-│   │   └── tipi.ts                 ✅ scritti a mano, rigenerabili da Supabase CLI
+│   │   ├── client.ts               client lato browser
+│   │   ├── server.ts               client lato server (SSR)
+│   │   ├── configurazione.ts       lettura .env con errori in italiano
+│   │   ├── sessione.ts             rinnovo sessione (proxy)
+│   │   ├── accesso.ts              richiediAccesso() per le pagine
+│   │   └── tipi.ts                 scritti a mano, rigenerabili da Supabase CLI
 │   ├── offline/
-│   │   ├── db.ts                   ✅ schema IndexedDB (cache, coda, bozze)
-│   │   ├── cache-query.ts          ✅ salva/ripristina la cache
-│   │   ├── bozze.ts                ✅ deposito delle bozze su IndexedDB
-│   │   ├── coda.ts                 ✅ deposito della coda su IndexedDB
-│   │   ├── invio.ts                ✅ traduce un'operazione in scrittura Supabase
-│   │   └── sync.ts                 ✅ motore: invia, ritenta, si arrende
-│   ├── dominio/
-│   │   ├── denaro.ts               ✅ centesimi, parsing, formattazione
-│   │   ├── denaro.test.ts          ✅ 22 test
-│   │   ├── clienti.ts              ✅ validazione, ricerca, ordinamento
-│   │   ├── clienti.test.ts         ✅ 18 test
-│   │   ├── listino.ts              ✅ scelta variante, nome completo
-│   │   ├── listino.test.ts         ✅ 9 test
-│   │   ├── coda.ts                 ✅ ordine, attese, dipendenze, errori
-│   │   ├── coda.test.ts            ✅ 25 test, scritti prima del codice
-│   │   ├── bozza.ts                ✅ il conto in composizione (DEC-08)
-│   │   ├── bozza.test.ts           ✅ 15 test
-│   │   ├── conti.ts                ✅ raggruppamento, elimina-o-storna
-│   │   ├── conti.test.ts           ✅ 18 test
-│   │   ├── crediti.ts              # calcoli su saldo e anzianità
-│   │   └── schemi.ts               # schemi Zod
+│   │   ├── db.ts                   schema IndexedDB (cache, coda, bozze)
+│   │   ├── cache-query.ts          salva/ripristina la cache
+│   │   ├── bozze.ts                deposito delle bozze (DEC-08)
+│   │   ├── coda.ts                 deposito della coda
+│   │   ├── invio.ts                traduce un'operazione in scrittura Supabase
+│   │   └── sync.ts                 motore: invia, ritenta, si arrende
+│   ├── dominio/                    funzioni pure — 187 test in tutto.
+│   │   │                           Ogni file ha il suo .test.ts accanto;
+│   │   │                           fra parentesi quanti test lo coprono.
+│   │   ├── crediti.ts              anzianità, chiusura conto, sollecito (44)
+│   │   ├── denaro.ts               centesimi, parsing, formattazione    (26)
+│   │   ├── clienti.ts              validazione, ricerca, rimozione      (25)
+│   │   ├── coda.ts                 ordine, attese, dipendenze, errori   (25)
+│   │   ├── bozza.ts                il conto in composizione (DEC-08)    (18)
+│   │   ├── conti.ts                raggruppamento, elimina-o-storna     (18)
+│   │   ├── scontrini.ts            giornata, battuto e non battuto      (14)
+│   │   ├── listino.ts              scelta variante, nome completo        (9)
+│   │   └── errori.ts               perché una lettura è fallita          (8)
 │   ├── hooks/
-│   │   ├── use-prodotti.ts         ✅ griglia dal database
-│   │   ├── use-stato-rete.ts       ✅ online/offline
-│   │   ├── use-clienti.ts          ✅ elenco con saldi + creazione via coda
-│   │   ├── use-coda.ts             ✅ stato della coda per l'indicatore
-│   │   ├── use-conti-aperti.ts     #                                [T-11]
-│   │   ├── use-conto.ts            #                                [T-12]
-│   │   └── use-crediti.ts          #                                [T-15]
+│   │   ├── use-prodotti.ts         griglia dal database
+│   │   ├── use-clienti.ts          elenco con saldi, aggiornaSaldoInCache
+│   │   ├── use-cliente.ts          scheda, estratto conto, incasso, rimozione
+│   │   ├── use-bozze.ts            bozze locali e conferma conto
+│   │   ├── use-scontrini.ts        movimenti di una giornata
+│   │   ├── use-coda.ts             stato della coda per l'indicatore
+│   │   └── use-stato-rete.ts       online/offline
 │   └── utils.ts
 │
-├── supabase/
-│   └── migrations/
-│       ├── 0001_schema.sql          ✅ tabelle, indici, trigger
-│       ├── 0002_viste.sql           ✅ viste di lettura
-│       ├── 0003_sicurezza.sql       ✅ RLS e regole anti-cancellazione
-│       ├── 0004_listino.sql         ✅ 59 prodotti
-│       ├── 0005_fase2_cassa.sql     ✅ pronto, NON eseguire ancora
-│       └── 0006_fase3_magazzino.sql ✅ pronto, NON eseguire ancora
+├── supabase/migrations/
+│   ├── 0001_schema.sql             tabelle, indici, trigger
+│   ├── 0002_viste.sql              viste di lettura
+│   ├── 0003_sicurezza.sql          RLS e regole anti-cancellazione
+│   ├── 0004_listino.sql            listino iniziale
+│   ├── 0005_fase2_cassa.sql        pronto, NON eseguire ancora
+│   ├── 0006_fase3_magazzino.sql    pronto, NON eseguire ancora
+│   ├── 0007_correzioni_sicurezza.sql
+│   ├── 0008_permessi_e_indici.sql
+│   ├── 0009_patatine.sql
+│   ├── 0010_cancellazione_cliente.sql  delete su clienti solo al titolare
+│   ├── 0011_scontrini.sql          vista v_scontrini
+│   └── 0012_stella_artois.sql
 │
-├── scripts/
-│   └── verifica-denaro.mjs         ✅ controllo automatico DEC-04
-│
-├── public/
-│   ├── manifest.json               ✅
-│   └── icone/                      ✅ 192, 512, maskable, apple-touch
-│
-├── docs/                           ✅ i sette documenti di progetto
-├── .env.local                      ✅ (solo locale, mai su GitHub)
-├── proxy.ts                        ✅ ex middleware.ts (rinominato in Next 16)
-├── netlify.toml                    ✅ senza questo file: 404 ovunque
-├── .env.local.example              ✅
-├── next.config.ts                  ✅
-├── vitest.config.mts               ✅
-├── eslint.config.mjs               ✅
-├── tsconfig.json                   ✅
-├── README.md                       ✅
-└── CLAUDE.md                       ✅
+├── scripts/verifica-denaro.mjs     controllo automatico DEC-04
+├── public/manifest.json + icone/
+├── docs/                           i sette documenti di progetto
+├── proxy.ts                        rinnovo sessione e protezione rotte
+└── next.config.ts  vitest.config.mts  eslint.config.mjs  tsconfig.json
 ```
+
+**`middleware.ts` non esiste:** in Next 16 quel gancio si chiama `proxy.ts`.
 
 Non esiste `tailwind.config.ts`: con Tailwind 4 la configurazione sta in `app/globals.css` dentro `@theme`.
 
@@ -171,7 +163,7 @@ Le frecce vanno in una direzione sola. In particolare: **`lib/dominio/` non impo
 
 ## 3. Il modulo denaro
 
-✅ **Implementato** in `lib/dominio/denaro.ts`, con 22 test in `denaro.test.ts`.
+Implementato in `lib/dominio/denaro.ts`, con 26 test in `denaro.test.ts`.
 Questa sezione descrive le scelte; il codice vero è nel file, ed è quello che conta.
 
 ### Funzioni disponibili
@@ -243,25 +235,35 @@ Lo storico completo non si tiene in locale: non serve dietro al banco e crescere
 // lib/offline/coda.ts (contratto)
 
 export type Operazione =
-  | { tipo: 'apri_conto';      dati: { id: string; clienteId: string | null } }
-  | { tipo: 'aggiungi_riga';   dati: { id: string; contoId: string; prodottoId: string | null;
-                                       descrizione: string; prezzoUnitarioCent: number; quantita: number } }
-  | { tipo: 'storna_riga';     dati: { id: string; rigaOriginaleId: string } }
-  | { tipo: 'elimina_riga';    dati: { rigaId: string } }
-  | { tipo: 'registra_pagamento'; dati: { id: string; clienteId: string | null; contoId: string | null;
-                                          importoCent: number; metodo: string } }
-  | { tipo: 'chiudi_conto';    dati: { contoId: string } }
-  | { tipo: 'crea_cliente';    dati: { id: string; nome: string; soprannome?: string; telefono?: string } };
+  // scritture del giro normale
+  | { tipo: 'crea_cliente';       dati: { id; nome; soprannome; telefono } }
+  | { tipo: 'salva_conto';        dati: { id; clienteId; apertoIl; confermatoIl;
+                                          righe: […]; pagamento: {…} | null } }
+  | { tipo: 'registra_pagamento'; dati: { id; clienteId; contoId; importoCent;
+                                          metodo; scontrinoBattuto } }
+  // anagrafica
+  | { tipo: 'disattiva_cliente';  dati: { id; nome } }
+  | { tipo: 'elimina_cliente';    dati: { id; nome } }
+  // scritte e testate, ma non usate finché la bozza resta locale (DEC-08)
+  | { tipo: 'apri_conto' } | { tipo: 'aggiungi_riga' }
+  | { tipo: 'storna_riga' } | { tipo: 'elimina_riga' } | { tipo: 'chiudi_conto' };
 
 export interface VoceCoda {
   opId: string;             // uuid, va nella colonna op_id
   operazione: Operazione;
   creataIl: number;
   tentativi: number;
+  riprovaDopo: number;      // attesa crescente fra un tentativo e l'altro
   ultimoErrore?: string;
   stato: 'in_attesa' | 'in_invio' | 'fallita';
 }
 ```
+
+Il contratto vero, con tutti i campi, sta in `lib/dominio/coda.ts`: qui c'è solo la forma, perché è quella che serve a capire il resto della sezione.
+
+**`salva_conto` è l'operazione normale per registrare un conto** (DEC-08): porta intestazione, righe e pagamento in un invio solo. `apri_conto`, `aggiungi_riga`, `storna_riga`, `elimina_riga` e `chiudi_conto` restano scritte e coperte da test perché torneranno in Fase 4, quando le bozze si sposteranno sul server e due baristi dovranno comporre lo stesso conto.
+
+**Gli orari li mette il dispositivo, non il server.** `salva_conto` porta `apertoIl`, `confermatoIl` e un `creatoIl` per riga. Il default `now()` di Postgres segnerebbe il momento in cui la coda si svuota: dopo mezz'ora senza rete, i caffè delle sette risulterebbero venduti alle sette e mezza.
 
 Il ciclo di vita:
 
@@ -286,10 +288,13 @@ Se un'operazione fallisce definitivamente, quelle che dipendono da lei restano b
 Vanno disabilitate esplicitamente con un messaggio comprensibile, non lasciate fallire in silenzio:
 
 - Estratto conto storico oltre i conti aperti
+- Schermata Scontrini: sono dati di controllo, non servono a servire un caffè
 - Chiusura giornaliera (Fase 2)
 - Modifica del listino
 - Report e statistiche
 - Login iniziale (la sessione già attiva funziona offline)
+
+Attenzione a come lo si scopre: senza rete TanStack **mette la richiesta in pausa** invece di farla fallire, quindi `error` resta nullo e `isPending` resta vero. Chi si affida solo a `error` lascia a schermo gli scheletri per sempre. Il controllo giusto è `fetchStatus === 'paused'` senza dati (vedi `scheda-cliente.tsx` ed `elenco-scontrini.tsx`).
 
 ### 4.6 Indicatore di stato
 
@@ -314,7 +319,7 @@ Supabase può notificare i cambiamenti in tempo reale. Va usato con parsimonia:
 **No:** clienti, prodotti, storico. Cambiano di rado, il polling periodico basta e consuma molto meno.
 
 ```typescript
-// esempio di sottoscrizione, in use-conti-aperti.ts
+// esempio di sottoscrizione — non ancora implementato (Fase 4)
 supabase
   .channel('conti-aperti')
   .on('postgres_changes',
@@ -427,7 +432,9 @@ Sarebbe un controllo ridondante su un host che esegue il proxy correttamente. È
 
 ## 12. Test — cosa vale la pena testare
 
-Non tutto merita un test. Questi sì:
+Non tutto merita un test. Questi sì.
+
+**Stato al 6 agosto 2026: 187 test, tutti in `lib/dominio/`.** Girano in poco più di un secondo perché non montano niente — è il vantaggio di tenere le regole in funzioni pure.
 
 **Test unitari obbligatori** (`lib/dominio/`):
 
@@ -436,6 +443,9 @@ Non tutto merita un test. Questi sì:
 - calcolo del totale di un conto con storni
 - calcolo del saldo cliente con acconti multipli
 - calcolo dei giorni di anzianità del debito
+- saldo progressivo dell'estratto conto **con lo storico paginato**: è il caso che ha nascosto un bug vero, perché sommando da zero il totale in cima non coincideva col saldo
+- chiusura conto con importo parziale, resto e divieto di debito al banco
+- riassunto scontrini: incassato senza scontrino e merce a credito non si sommano
 
 **Test di integrazione** (contro un Supabase locale):
 
@@ -449,6 +459,7 @@ Non tutto merita un test. Questi sì:
 - modalità aereo: aggiungere 3 righe, riattivare la rete, verificare che arrivino tutte una volta sola
 - tap ripetuto veloce sullo stesso prodotto: verificare il conteggio
 - due dispositivi sullo stesso conto contemporaneamente
+- `npm run verifica:denaro`: deve trovare **una sola** divisione per 100, dentro `formatEuro`
 
 Non serve testare i componenti di interfaccia con test automatici in questa fase: cambiano troppo e il ritorno è basso.
 
