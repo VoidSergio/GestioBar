@@ -85,12 +85,16 @@
 |---|---|
 | Pasta | 1,50 |
 | Pizzetta sfoglia | 1,50 |
+| Patatine piccole | 1,50 |
+| Patatine grandi | 3,00 |
+
+Le patatine sono un riquadro solo con due varianti e **nessuna "normale"**: il tap breve prende la busta piccola, che è la più economica e la più venduta; la grande sta sotto il ▾.
 
 ---
 
-**59 prodotti vendibili, 34 riquadri nella griglia.**
+**61 prodotti vendibili, 35 riquadri nella griglia.**
 
-Senza il modello a varianti (§3.4 di `02-MODELLO-DATI.md`) la griglia avrebbe 59 riquadri e sarebbe inutilizzabile su un telefono. Con il raggruppamento, ogni categoria sta in una schermata sola:
+Senza il modello a varianti (§3.4 di `02-MODELLO-DATI.md`) la griglia avrebbe 61 riquadri e sarebbe inutilizzabile su un telefono. Con il raggruppamento, ogni categoria sta in una schermata sola:
 
 | Categoria | Prodotti | Riquadri |
 |---|---|---|
@@ -101,8 +105,8 @@ Senza il modello a varianti (§3.4 di `02-MODELLO-DATI.md`) la griglia avrebbe 5
 | Aperitivi | 7 | 6 |
 | Vini | 4 | 1 |
 | Superalcolici | 4 | 3 |
-| Food | 2 | 2 |
-| **Totale** | **59** | **34** |
+| Food | 4 | 3 |
+| **Totale** | **61** | **35** |
 
 ### Regolarità osservate nel listino
 
