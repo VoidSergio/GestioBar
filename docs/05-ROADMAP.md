@@ -25,11 +25,14 @@
 | T-13 Incassa e a credito | ✅ fatto | pannello pagamento, importo parziale, resto, riepilogo di 2 s |
 | T-14 Scheda cliente | ✅ fatta | estratto conto paginato a 30, saldo ancorato a `v_saldo_clienti` |
 | T-15 Crediti | ✅ fatta | ordine per anzianità, filtri, sollecito modificabile prima dell'invio |
+| Scontrini | ✅ fatta | **anticipata dalla Fase 2** su richiesta del titolare |
 | T-16 Listino | ⬜ prossimo | prezzi, varianti, preferiti, riordino |
 
 **Fase 0 chiusa.** L'app è pubblicata su Netlify, 158 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
 
 **Navigazione:** tab bar in basso (04-UX-MOBILE §2) sulle tre schermate principali. La quarta voce, "Altro", arriva con T-16 — è il primo contenuto che ci finirebbe dentro.
+
+**Anticipo dalla Fase 2.** La schermata Scontrini (`/scontrini`, sotto la scheda "Altro") è stata fatta prima di T-19, contro la regola di `CLAUDE.md`. È un anticipo parziale di T-22: mostra che cosa è stato battuto e che cosa no, una giornata alla volta, ma **non** registra la chiusura di cassa né la differenza rilevata — quelle restano a T-22, insieme alle tabelle `movimenti_cassa` e `chiusure_giornaliere` che non esistono ancora. Il resto della Fase 2 non si tocca prima di T-19.
 
 **Da provare sul telefono, non verificabile a tavolino:** il comportamento offline di T-13 e T-14 e i bersagli di tocco del pannello pagamento.
 
@@ -466,7 +469,7 @@ Questo è il vero criterio di uscita dalla Fase 1. Non "il codice è finito": "i
 |---|---|---|
 | T-20 | Schema cassa (`02-MODELLO-DATI.md` §4) | Le tabelle esistono, `v_riepilogo_giornata` gira |
 | T-21 | Registrazione incassi al banco senza conto | Un incasso rapido si registra in 2 tap |
-| T-22 | Schermata chiusura giornaliera | La differenza di cassa si calcola da sola e si può annotare la causale |
+| T-22 | Schermata chiusura giornaliera — *la parte "cosa è stato scontrinato" è già fatta* | La differenza di cassa si calcola da sola e si può annotare la causale |
 | T-23 | Report giornata e settimana | Incassato per metodo, credito concesso, credito rientrato |
 | T-24 | Esportazione CSV | Il file si apre in Excel con gli importi in euro, virgola decimale, e le date leggibili |
 

@@ -9,11 +9,7 @@ import { usePathname } from 'next/navigation';
  * Niente menu a panino: un menu nascosto costa un tap in più a ogni
  * spostamento, e in un bar quel tap non c'è.
  *
- * Manca la quarta voce, "Altro" (listino, cassa, magazzino, impostazioni):
- * arriva con T-16, che è il primo contenuto che ci finirebbe dentro. Una
- * scheda che si apre su una schermata vuota è peggio di una scheda assente.
- *
- * Sta solo sulle tre schermate principali. Il dettaglio di un conto e la
+ * Sta solo sulle schermate principali. Il dettaglio di un conto e la
  * scheda cliente sono schermate di lavoro: hanno le loro azioni in basso e
  * la freccia indietro in alto, e la barra ruberebbe spazio e bersagli.
  */
@@ -22,6 +18,7 @@ const VOCI = [
   { href: '/', icona: '🏠', etichetta: 'Conti' },
   { href: '/clienti', icona: '👥', etichetta: 'Clienti' },
   { href: '/crediti', icona: '💰', etichetta: 'Crediti' },
+  { href: '/altro', icona: '⚙️', etichetta: 'Altro' },
 ] as const;
 
 export function BarraNavigazione() {
@@ -34,7 +31,9 @@ export function BarraNavigazione() {
     >
       <ul className="flex">
         {VOCI.map((v) => {
-          const attiva = percorso === v.href;
+          // /scontrini sta dentro Altro: la scheda deve restare accesa,
+          // altrimenti sembra di essere usciti dalla sezione.
+          const attiva = percorso === v.href || (v.href === '/altro' && percorso === '/scontrini');
           return (
             <li key={v.href} className="flex-1">
               <Link

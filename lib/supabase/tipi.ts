@@ -160,6 +160,24 @@ export type MovimentoEstrattoConto = {
   e_storno: boolean;
 };
 
+/**
+ * Una riga della vista scontrini. `tipo` distingue due cose che non vanno
+ * sommate: i soldi entrati e la merce uscita a credito.
+ */
+export type MovimentoScontrino = {
+  movimento_id: string;
+  tipo: 'incasso' | 'a_credito';
+  data: string;
+  importo_cent: number;
+  scontrino_battuto: boolean;
+  /** null sulle righe a credito: non c'è stato nessun pagamento */
+  metodo: string | null;
+  cliente_id: string | null;
+  cliente_nome: string | null;
+  cliente_soprannome: string | null;
+  conto_numero: number | null;
+};
+
 export type VarianteProdotto = {
   id: string;
   variante: string;
@@ -244,6 +262,7 @@ export interface Database {
       v_conti_aperti: { Row: ContoAperto; Relationships: [] };
       v_estratto_conto: { Row: MovimentoEstrattoConto; Relationships: [] };
       v_griglia_prodotti: { Row: RiquadroGriglia; Relationships: [] };
+      v_scontrini: { Row: MovimentoScontrino; Relationships: [] };
     };
     Functions: Record<string, never>;
     Enums: Record<string, never>;
