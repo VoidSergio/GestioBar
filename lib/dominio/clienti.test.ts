@@ -5,6 +5,8 @@ import {
   filtraClienti,
   etichettaCliente,
   ordinaPerRilevanza,
+  comeRimuovereCliente,
+  haMovimenti,
 } from './clienti';
 import type { SaldoCliente } from '@/lib/supabase/tipi';
 
@@ -27,7 +29,7 @@ function saldo(nome: string, saldoCent: number, soprannome: string | null = null
 }
 
 describe('validaNuovoCliente', () => {
-  it('accetta il solo nome: dietro al banco non c\'è tempo per altro', () => {
+  it("accetta il solo nome: dietro al banco non c'è tempo per altro", () => {
     const e = validaNuovoCliente({ nome: 'Mario' });
     expect(e.valido).toBe(true);
     if (e.valido) {
@@ -93,7 +95,7 @@ describe('filtraClienti', () => {
     { nome: 'Nicolò Bianchi', soprannome: null },
   ];
 
-  it('cerca sull\'inizio delle parole, non in mezzo', () => {
+  it("cerca sull'inizio delle parole, non in mezzo", () => {
     const r = filtraClienti(clienti, 'ros');
     // "Ambrosini" contiene "ros" ma non comincia con quello: non deve uscire
     expect(r.map((c) => c.nome)).toEqual(['Mario Rossi']);
@@ -118,7 +120,7 @@ describe('filtraClienti', () => {
 });
 
 describe('etichettaCliente', () => {
-  it('mostra il soprannome fra parentesi quando c\'è', () => {
+  it("mostra il soprannome fra parentesi quando c'è", () => {
     expect(etichettaCliente({ nome: 'Franco', soprannome: 'Ciccio' })).toBe('Franco (Ciccio)');
     expect(etichettaCliente({ nome: 'Mario', soprannome: null })).toBe('Mario');
   });
@@ -145,9 +147,48 @@ describe('ordinaPerRilevanza', () => {
     expect(ordinati[0]!.nome).toBe('Mario');
   });
 
-  it('non modifica l\'elenco ricevuto', () => {
+  it("non modifica l'elenco ricevuto", () => {
     const originale = [saldo('Anna', 0), saldo('Franco', 6800)];
     ordinaPerRilevanza(originale);
     expect(originale[0]!.nome).toBe('Anna');
+  });
+});
+
+describe('comeRimuovereCliente', () => {
+  it('un barista non tocca niente', () => {
+    const r = comeRimuovereCliente({ ruolo: 'barista', haMovimenti: false });
+    expect(r.azione).toBe('vietata');
+  });
+
+  it('senza ruolo conosciuto non si fa niente', () => {
+    expect(comeRimuovereCliente({ ruolo: null, haMovimenti: false }).azione).toBe('vietata');
+  });
+
+  it('il titolare cancella davvero un cliente senza movimenti', () => {
+    // Il caso vero: un doppione, o un nome scritto male
+    expect(comeRimuovereCliente({ ruolo: 'titolare', haMovimenti: false }).azione).toBe('cancella');
+  });
+
+  it('un cliente con movimenti si disattiva, non si cancella', () => {
+    const r = comeRimuovereCliente({ ruolo: 'titolare', haMovimenti: true });
+    expect(r.azione).toBe('disattiva');
+    if (r.azione === 'disattiva') expect(r.motivo).toMatch(/estratto conto/i);
+  });
+});
+
+describe('haMovimenti', () => {
+  it('un cliente mai servito non ha movimenti', () => {
+    expect(haMovimenti({ addebitato_cent: 0, pagato_cent: 0 })).toBe(false);
+  });
+
+  it('chi ha consumato e pagato tutto ha saldo zero ma una storia', () => {
+    // È il caso che rende sbagliato guardare il saldo invece dei totali:
+    // cancellarlo porterebbe via mesi di estratto conto
+    expect(haMovimenti({ addebitato_cent: 5000, pagato_cent: 5000 })).toBe(true);
+  });
+
+  it('basta un solo movimento', () => {
+    expect(haMovimenti({ addebitato_cent: 120, pagato_cent: 0 })).toBe(true);
+    expect(haMovimenti({ addebitato_cent: 0, pagato_cent: 500 })).toBe(true);
   });
 });

@@ -57,11 +57,7 @@ export function validaNuovoCliente(dati: DatiNuovoCliente): EsitoValidazione {
  * digita mentre cerca. Chi scrive "nicolo" deve trovare "Nicolò".
  */
 export function normalizzaPerRicerca(testo: string): string {
-  return testo
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim();
+  return testo.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
 
 /**
@@ -104,4 +100,64 @@ export function ordinaPerRilevanza(clienti: readonly SaldoCliente[]): SaldoClien
     if (aDeve && bDeve) return b.saldo_cent - a.saldo_cent;
     return a.nome.localeCompare(b.nome, 'it');
   });
+}
+
+/* ------------------------------------------- cancellare o disattivare */
+
+export type Ruolo = 'titolare' | 'barista';
+
+/**
+ * Che cosa succede quando si chiede di togliere di mezzo un cliente.
+ *
+ * Non è la stessa cosa per tutti, ed è il punto: un cliente con dei
+ * movimenti **non si cancella**. Cancellarlo vorrebbe dire buttare via la
+ * storia dei suoi soldi, e in un bar quel numero non si ricostruisce a
+ * memoria. Si disattiva: sparisce dagli elenchi, l'estratto conto resta.
+ *
+ * Un cliente senza nessun movimento invece non ha niente da perdere. È un
+ * doppione, un nome scritto male, una prova: si cancella davvero, così
+ * l'elenco resta pulito.
+ *
+ * Il database dice la stessa cosa per conto suo — `conti.cliente_id`
+ * rifiuta la cancellazione di un cliente con conti — ma la decisione va
+ * presa prima, per poterla spiegare all'utente invece di mostrargli un
+ * errore di chiave esterna.
+ */
+export type AzioneRimozione =
+  | { azione: 'cancella' }
+  | { azione: 'disattiva'; motivo: string }
+  | { azione: 'vietata'; motivo: string };
+
+export function comeRimuovereCliente(dati: {
+  ruolo: Ruolo | null;
+  /** true se il cliente ha almeno una riga di conto o un pagamento */
+  haMovimenti: boolean;
+}): AzioneRimozione {
+  if (dati.ruolo !== 'titolare') {
+    return {
+      azione: 'vietata',
+      motivo: 'Solo il titolare può togliere un cliente dall’elenco.',
+    };
+  }
+
+  if (dati.haMovimenti) {
+    return {
+      azione: 'disattiva',
+      motivo:
+        'Questo cliente ha dei movimenti registrati. Cancellarlo porterebbe via il suo estratto conto: sparisce dagli elenchi, ma la sua storia resta.',
+    };
+  }
+
+  return { azione: 'cancella' };
+}
+
+/**
+ * Un cliente ha lasciato tracce?
+ *
+ * Si guarda il totale addebitato e il totale pagato, non il saldo: un
+ * cliente che ha consumato 50 € e ne ha pagati 50 ha saldo zero ma una
+ * storia lunga, e cancellarlo la porterebbe via.
+ */
+export function haMovimenti(c: { addebitato_cent: number; pagato_cent: number }): boolean {
+  return c.addebitato_cent !== 0 || c.pagato_cent !== 0;
 }

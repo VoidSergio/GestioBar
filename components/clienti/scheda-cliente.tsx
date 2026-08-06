@@ -1,16 +1,17 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { descriviSaldo, formatEuro, statoSaldo } from '@/lib/dominio/denaro';
-import { etichettaCliente } from '@/lib/dominio/clienti';
+import { etichettaCliente, type Ruolo } from '@/lib/dominio/clienti';
 import { conSaldoProgressivo, raggruppaPerGiorno } from '@/lib/dominio/crediti';
 import { PAGINA_MOVIMENTI, useCliente, useEstrattoConto } from '@/lib/hooks/use-cliente';
 import { useApriConto } from '@/lib/hooks/use-bozze';
 import { IndicatoreSync } from '@/components/shell/indicatore-sync';
 import { PannelloIncasso } from './pannello-incasso';
+import { PannelloRimozione } from './pannello-rimozione';
 
-export function SchedaCliente({ id }: { id: string }) {
+export function SchedaCliente({ id, ruolo }: { id: string; ruolo: Ruolo | null }) {
   const router = useRouter();
   const { data: cliente, isPending } = useCliente(id);
   const [quanti, setQuanti] = useState(PAGINA_MOVIMENTI);
@@ -23,7 +24,17 @@ export function SchedaCliente({ id }: { id: string }) {
   } = useEstrattoConto(id, quanti);
   const apri = useApriConto();
   const [incasso, setIncasso] = useState(false);
+  const [rimozione, setRimozione] = useState(false);
   const [esito, setEsito] = useState<string | null>(null);
+  const [congedo, setCongedo] = useState<string | null>(null);
+
+  // Tolto il cliente, questa schermata non ha più un soggetto: si dice com'è
+  // andata e si torna all'elenco, invece di mostrare "cliente non trovato".
+  useEffect(() => {
+    if (!congedo) return;
+    const t = setTimeout(() => router.push('/clienti'), 2000);
+    return () => clearTimeout(t);
+  }, [congedo, router]);
 
   // Se ne sono arrivati meno di quanti chiesti, sotto non c'è altro.
   const ceAltro = movimenti !== undefined && movimenti.length >= quanti;
@@ -38,6 +49,20 @@ export function SchedaCliente({ id }: { id: string }) {
     () => raggruppaPerGiorno(conSaldoProgressivo(movimenti ?? [], cliente?.saldo_cent ?? 0)),
     [movimenti, cliente?.saldo_cent],
   );
+
+  if (congedo) {
+    return (
+      <div
+        role="status"
+        className="flex h-dvh flex-col items-center justify-center gap-3 px-8 text-center"
+      >
+        <p className="text-5xl" aria-hidden>
+          ✓
+        </p>
+        <p className="text-lg">{congedo}</p>
+      </div>
+    );
+  }
 
   if (isPending) return <div className="h-dvh" aria-busy="true" />;
 
@@ -86,6 +111,18 @@ export function SchedaCliente({ id }: { id: string }) {
             </a>
           )}
         </div>
+
+        {/* Il ⋮ compare solo al titolare: a un barista non serve e non può */}
+        {ruolo === 'titolare' && (
+          <button
+            type="button"
+            onClick={() => setRimozione(true)}
+            aria-label="Altre azioni su questo cliente"
+            className="flex h-11 w-11 shrink-0 items-center justify-center text-xl text-[var(--color-testo-tenue)]"
+          >
+            ⋮
+          </button>
+        )}
       </header>
 
       {/* Il numero grande della schermata */}
@@ -222,6 +259,18 @@ export function SchedaCliente({ id }: { id: string }) {
                   ? `Incassato. Restano ${formatEuro(residuo)} a debito.`
                   : 'Incassato. Il cliente è in pari.',
             );
+          }}
+        />
+      )}
+
+      {rimozione && (
+        <PannelloRimozione
+          cliente={cliente}
+          ruolo={ruolo}
+          onChiudi={() => setRimozione(false)}
+          onFatto={(messaggio) => {
+            setRimozione(false);
+            setCongedo(messaggio);
           }}
         />
       )}

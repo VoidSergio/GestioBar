@@ -93,6 +93,37 @@ export async function inviaOperazione(opId: string, op: Operazione): Promise<Esi
         return { ok: true, messaggio: 'ok' };
       }
 
+      case 'disattiva_cliente': {
+        const { error } = await sb.from('clienti').update({ attivo: false }).eq('id', op.dati.id);
+        return esito(error);
+      }
+
+      case 'elimina_cliente': {
+        // Due modi in cui questa può fallire, ed è giusto così:
+        //  - 42501 / nessuna riga toccata: chi la manda non è il titolare
+        //  - 23503: il cliente ha dei conti, il database rifiuta
+        // In entrambi i casi è un errore di dati, la voce si ferma e si
+        // mostra all'utente invece di ritentare all'infinito.
+        const { error, count } = await sb
+          .from('clienti')
+          .delete({ count: 'exact' })
+          .eq('id', op.dati.id);
+
+        if (error) return esito(error);
+
+        // RLS non dà errore quando vieta: restituisce zero righe toccate.
+        // Senza questo controllo la cancellazione risulterebbe riuscita.
+        if (count === 0) {
+          return {
+            ok: false,
+            codice: 'permesso_negato',
+            messaggio: 'Solo il titolare può cancellare un cliente.',
+          };
+        }
+
+        return { ok: true, messaggio: 'ok' };
+      }
+
       case 'apri_conto': {
         const { error } = await sb.from('conti').insert({
           id: op.dati.id,
@@ -126,7 +157,11 @@ export async function inviaOperazione(opId: string, op: Operazione): Promise<Esi
 
         if (erroreLettura) return esito(erroreLettura);
         if (!originale) {
-          return { ok: false, codice: 'riga_assente', messaggio: 'La riga da stornare non esiste.' };
+          return {
+            ok: false,
+            codice: 'riga_assente',
+            messaggio: 'La riga da stornare non esiste.',
+          };
         }
 
         const { error } = await sb.from('righe_conto').insert({

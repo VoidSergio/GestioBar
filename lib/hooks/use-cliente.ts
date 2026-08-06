@@ -5,7 +5,13 @@ import { supabaseBrowser } from '@/lib/supabase/client';
 import type { MovimentoEstrattoConto, SaldoCliente } from '@/lib/supabase/tipi';
 import { accoda } from '@/lib/offline/coda';
 import { sollecitaSync } from '@/lib/offline/sync';
-import { aggiornaSaldoInCache } from './use-clienti';
+import {
+  comeRimuovereCliente,
+  haMovimenti,
+  type AzioneRimozione,
+  type Ruolo,
+} from '@/lib/dominio/clienti';
+import { aggiornaSaldoInCache, CHIAVE_CLIENTI } from './use-clienti';
 import { nuovoId } from '@/lib/utils';
 
 /** Saldo e anagrafica di un cliente. */
@@ -102,6 +108,53 @@ export function useIncassa() {
       void queryClient.invalidateQueries({
         queryKey: ['estratto-conto', dati.clienteId],
       });
+    },
+  });
+}
+
+/**
+ * Toglie un cliente dall'elenco: cancellandolo o disattivandolo, a seconda
+ * di che cosa si perderebbe.
+ *
+ * La decisione la prende `comeRimuovereCliente` (lib/dominio/clienti.ts),
+ * non questo hook: qui c'è solo l'esecuzione. Passa dalla coda come ogni
+ * scrittura, quindi funziona anche senza rete.
+ */
+export function useRimuoviCliente() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (dati: {
+      cliente: SaldoCliente;
+      ruolo: Ruolo | null;
+    }): Promise<AzioneRimozione> => {
+      const decisione = comeRimuovereCliente({
+        ruolo: dati.ruolo,
+        haMovimenti: haMovimenti(dati.cliente),
+      });
+
+      if (decisione.azione === 'vietata') return decisione;
+
+      await accoda(nuovoId(), {
+        tipo: decisione.azione === 'cancella' ? 'elimina_cliente' : 'disattiva_cliente',
+        dati: { id: dati.cliente.id, nome: dati.cliente.nome },
+      });
+      sollecitaSync();
+
+      return decisione;
+    },
+
+    onSuccess: (decisione, dati) => {
+      if (decisione.azione === 'vietata') return;
+
+      // In entrambi i casi il cliente sparisce dall'elenco: `useClienti`
+      // legge solo gli attivi, quindi disattivare e cancellare si vedono
+      // uguali da lì. La differenza è che uno si può disfare.
+      queryClient.setQueryData<SaldoCliente[]>(CHIAVE_CLIENTI, (elenco) =>
+        elenco?.filter((c) => c.id !== dati.cliente.id),
+      );
+      queryClient.removeQueries({ queryKey: ['cliente', dati.cliente.id] });
+      queryClient.removeQueries({ queryKey: ['estratto-conto', dati.cliente.id] });
     },
   });
 }

@@ -255,6 +255,13 @@ create index idx_conti_aperti on conti (stato, aperto_il desc) where stato = 'ap
 create index idx_conti_cliente on conti (cliente_id, aperto_il desc);
 ```
 
+**Un cliente si cancella solo se non ha lasciato tracce.** `conti.cliente_id` non ha `on delete cascade`: Postgres rifiuta di cancellare un cliente che ha anche un solo conto, e questa è la protezione che conta, perché vale anche se un domani qualcuno tocca le policy. L'app decide prima quale delle due strade prendere (`comeRimuovereCliente` in `lib/dominio/clienti.ts`), così può spiegarlo invece di mostrare un errore di chiave esterna:
+
+- **nessun movimento** — un doppione, un nome scritto male, una prova: si cancella davvero;
+- **con movimenti** — si mette `attivo = false`. Sparisce dagli elenchi, l'estratto conto resta (DEC-03).
+
+Il permesso di `delete` su `clienti` è riservato al titolare da `0010_cancellazione_cliente.sql`. RLS non dà errore quando vieta: restituisce zero righe toccate, quindi chi cancella deve controllare `count` e non solo `error`.
+
 **`cliente_id` può essere nullo:** è la consumazione al banco pagata subito, senza anagrafica.
 
 **Un solo conto aperto per cliente:** garantito dal database, non dall'applicazione. Se due dispositivi provano a creare un conto per Mario nello stesso momento, uno dei due fallisce e l'app usa quello esistente. Senza questo vincolo il credito di un cliente si spezzerebbe su conti paralleli.

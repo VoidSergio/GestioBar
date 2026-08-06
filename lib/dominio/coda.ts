@@ -53,6 +53,23 @@ export type Operazione =
         } | null;
       };
     }
+  | {
+      /**
+       * Toglie dagli elenchi un cliente che ha una storia.
+       * Reversibile: è un UPDATE di `attivo`, non una cancellazione.
+       */
+      tipo: 'disattiva_cliente';
+      dati: { id: string; nome: string };
+    }
+  | {
+      /**
+       * Cancella davvero. Solo per i clienti senza nessun movimento —
+       * doppioni, nomi sbagliati, prove — e solo per il titolare: il
+       * database rifiuta il resto (0010_cancellazione_cliente.sql).
+       */
+      tipo: 'elimina_cliente';
+      dati: { id: string; nome: string };
+    }
   | { tipo: 'apri_conto'; dati: { id: string; clienteId: string | null } }
   | {
       tipo: 'aggiungi_riga';
@@ -111,6 +128,8 @@ export function produce(op: Operazione): string | null {
       return op.dati.id;
     case 'elimina_riga':
     case 'chiudi_conto':
+    case 'disattiva_cliente':
+    case 'elimina_cliente':
       return null;
   }
 }
@@ -141,6 +160,11 @@ export function richiede(op: Operazione): string[] {
       return [op.dati.clienteId, op.dati.contoId].filter((x): x is string => x !== null);
     case 'chiudi_conto':
       return [op.dati.contoId];
+    case 'disattiva_cliente':
+    case 'elimina_cliente':
+      // Un cliente creato offline e cancellato subito dopo: la cancellazione
+      // non può partire prima che il cliente esista sul server.
+      return [op.dati.id];
   }
 }
 
@@ -302,5 +326,9 @@ export function descriviOperazione(op: Operazione): string {
       return 'Pagamento';
     case 'chiudi_conto':
       return 'Chiusura di un conto';
+    case 'disattiva_cliente':
+      return `Disattivazione di ${op.dati.nome}`;
+    case 'elimina_cliente':
+      return `Cancellazione di ${op.dati.nome}`;
   }
 }
