@@ -126,6 +126,7 @@ insert into prodotti (categoria_id, nome_base, variante, prezzo_cent, preferito,
 select c.id, v.base, v.variante, v.prezzo, v.pref, v.ord
 from (values
   ('Bitter',       'normale',      250, false, 1),
+  ('Bitter',       'con aggiunta',      250, false, 1),
   ('Crodino',      'normale',      250, false, 2),
   ('Campari soda', 'normale',      300, false, 3),
   ('Campari soda', 'con aggiunta', 350, false, 3),
