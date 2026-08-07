@@ -46,3 +46,25 @@
 #
 # Dopo il primo deploy, la prova è in README.md §"Pubblicazione".
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# INTESTAZIONI PER IL SERVICE WORKER (T-17)
+#
+# `sw.js` non va messo in cache dal browser. Se lo fosse, un aggiornamento
+# dell'app resterebbe invisibile finché la copia vecchia non scade: il
+# service worker è proprio il file che deve poter dire "c'è una versione
+# nuova", e se arriva vecchio non lo dice mai.
+# ---------------------------------------------------------------------------
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+    Service-Worker-Allowed = "/"
+
+# Il manifest cambia di rado ma non è immutabile: un'ora è un compromesso
+# fra non richiederlo a ogni avvio e non restare indietro di giorni.
+[[headers]]
+  for = "/manifest.json"
+  [headers.values]
+    Cache-Control = "public, max-age=3600"

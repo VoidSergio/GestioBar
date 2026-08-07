@@ -27,7 +27,8 @@
 | T-15 Crediti | ✅ fatta | ordine per anzianità, filtri, sollecito modificabile prima dell'invio |
 | Scontrini | ✅ fatta | **anticipata dalla Fase 2** su richiesta del titolare |
 | T-16 Listino | 🟨 quasi | prezzi, varianti, preferiti, disattivazione. **Manca il riordino per trascinamento** |
-| T-17 PWA | ⬜ prossimo | service worker e installazione |
+| T-17 PWA | 🟨 quasi | service worker scritto a mano, pagina offline. **Da provare sui telefoni e con Lighthouse** |
+| T-18 Collaudo | ⬜ prossimo | una settimana dietro il banco, col foglio in parallelo |
 
 **Fase 0 chiusa.** L'app è pubblicata su Netlify, 158 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
 
@@ -416,17 +417,23 @@ Fatto quando:
 ### T-17 — PWA e installazione
 
 Dipende da: T-15
-File toccati: `next.config.mjs`, `public/manifest.json`, `public/icone/`
+File toccati: `public/sw.js`, `app/offline/page.tsx`, `components/shell/registra-service-worker.tsx`, `netlify.toml`
 
 Cosa fare: manifest, icone, service worker, schermata di avvio.
 
+**Il service worker è scritto a mano**, ottanta righe in `public/sw.js`. `next-pwa` sarebbe una dipendenza non prevista in `03-ARCHITETTURA.md` §1, e genera un file che nessuno legge: un service worker sbagliato non dà errore, continua a servire una versione vecchia dell'app finché qualcuno non se ne accorge.
+
+Non mette in cache nessun **dato**: quelli stanno già in IndexedDB e le scritture passano dalla coda. Si occupa solo di far partire l'app senza rete — guscio, script, stili. Le chiamate a Supabase le lascia fallire apposta, perché è dal fallimento che la coda capisce di dover ritentare.
+
+I criteri qui sotto si verificano solo **sui telefoni veri**: nessuno dei due sistemi operativi si può simulare a tavolino, e Lighthouse va lanciato sul sito pubblicato.
+
 Fatto quando:
 
-- [ ] Su Android compare la richiesta di installazione
-- [ ] Su iPhone "Aggiungi a schermata Home" produce un'app a schermo intero senza barra del browser
-- [ ] L'icona è visibile e nitida su entrambi
-- [ ] Aprendo l'app senza rete si vedono i dati in cache, non una schermata di errore
-- [ ] Lighthouse mobile: PWA installabile, prestazioni ≥ 90
+- [ ] Su Android compare la richiesta di installazione — **da provare**
+- [ ] Su iPhone "Aggiungi a schermata Home" produce un'app a schermo intero senza barra del browser — **da provare**
+- [ ] L'icona è visibile e nitida su entrambi — **da provare**
+- [x] Aprendo l'app senza rete si vedono i dati in cache, non una schermata di errore — la pagina `/offline` copre il caso della schermata mai aperta
+- [ ] Lighthouse mobile: PWA installabile, prestazioni ≥ 90 — **da lanciare sul sito pubblicato**
 
 ---
 

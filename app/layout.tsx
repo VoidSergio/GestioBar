@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { ProviderDati } from '@/components/shell/provider-dati';
+import { RegistraServiceWorker } from '@/components/shell/registra-service-worker';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="it">
       <body className="min-h-full antialiased">
+        <RegistraServiceWorker />
         <ProviderDati>{children}</ProviderDati>
       </body>
     </html>

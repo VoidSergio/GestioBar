@@ -11,7 +11,7 @@ Gestionale per un bar, mobile-first, in italiano. Serve a sapere con certezza **
 
 Stack: Next.js 16 (App Router, Turbopack) + TypeScript strict + Supabase + TanStack Query + Tailwind 4.
 
-**Stato:** Fase 0 chiusa, app pubblicata su Netlify. Fatti T-06 (accesso), T-07 (cache offline), T-08 (clienti), T-09 (coda), T-10 (griglia), T-11 (apertura conto), T-12 (righe), T-13 (chiusura conto), T-14 (scheda cliente), T-15 (crediti), T-16 (listino). 62 prodotti a catalogo, 216 test verdi. Il giro completo funziona. Il prossimo task è **T-17** in `docs/05-ROADMAP.md`.
+**Stato:** Fase 0 chiusa, app pubblicata su Netlify. Fatti T-06 (accesso), T-07 (cache offline), T-08 (clienti), T-09 (coda), T-10 (griglia), T-11 (apertura conto), T-12 (righe), T-13 (chiusura conto), T-14 (scheda cliente), T-15 (crediti), T-16 (listino), T-17 (PWA). 62 prodotti a catalogo, 216 test verdi. Il giro completo funziona. Il prossimo task è **T-18**, il collaudo sul campo in `docs/05-ROADMAP.md`.
 
 **Il saldo si legge da un posto solo, ma sta in due cache.** L'elenco (`clienti-con-saldo`) e la scheda (`['cliente', id]`) contengono lo stesso numero: chi lo muove usa `aggiornaSaldoInCache()` in `lib/hooks/use-clienti.ts`, che le tocca entrambe. **Mai `invalidateQueries` subito dopo `accoda()`**: la rilettura parte prima che la scrittura arrivi al server e ricasca sul valore vecchio marcandolo fresco (`03-ARCHITETTURA.md` §4.3).
 
