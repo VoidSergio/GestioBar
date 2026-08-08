@@ -42,6 +42,8 @@ Prima di scrivere codice: `npm test`, `npm run verifica:denaro`, `npm run lint` 
 | `05-ROADMAP.md` | Per sapere cosa fare adesso e quando è finito |
 | `06-SETUP-SUPABASE.md` | Setup e problemi di database |
 | `07-LISTINO.md` | Prodotti reali, prezzi, modello a varianti |
+| `08-COLLAUDO.md` | Protocollo di T-18: come si misura ogni criterio dietro il banco |
+| `09-DIARIO.md` | **Prima di toccare migrazioni, cache del saldo o messaggi d'errore.** Ci sta scritto cosa è già andato storto lì, e perché |
 
 **Non iniziare un task senza aver letto il documento pertinente.**
 

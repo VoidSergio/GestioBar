@@ -17,6 +17,7 @@ Sistema mobile-first per gestire conti aperti e clienti che pagano in ritardo.
 | 07 | [`07-LISTINO.md`](07-LISTINO.md) | Il tuo listino reale con SQL pronto, il modello a varianti | A entrambi |
 | 08 | [`08-COLLAUDO.md`](08-COLLAUDO.md) | Protocollo della settimana dietro il banco: come si misura ogni criterio di T-18, come si annota un attrito | **A te.** Si legge la sera prima di cominciare |
 | — | [`scheda-collaudo.pdf`](scheda-collaudo.pdf) | La scheda di carta da fotocopiare sette volte e tenere dietro il banco | **A te.** È l'unica cosa che serve durante il servizio |
+| 09 | [`09-DIARIO.md`](09-DIARIO.md) | Che cosa è andato storto, quando, e perché non deve ricapitare. Si aggiunge in fondo, non si riscrive | A entrambi. All'agente, prima di toccare qualcosa che qui ha già morso |
 | — | [`CLAUDE.md`](CLAUDE.md) | Regole assolute per chi scrive il codice | All'agente, automaticamente |
 
 ---
