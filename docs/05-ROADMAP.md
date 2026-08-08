@@ -510,7 +510,7 @@ clienti che conosco spende di più", non "da dove vengono i miei soldi". Va scri
 schermata, altrimenti il totale sembra sbagliato. T-26 invece li comprende tutti: quello che esce
 esce, che sia segnato o pagato subito.
 
-### Tre cose che varrebbe la pena guardare, e a cui di solito non si pensa
+### Due cose che varrebbe la pena guardare, e a cui di solito non si pensa
 
 Non sono task e non hanno un numero: sono domande che i dati sanno già rispondere, da valutare
 quando si scriveranno T-25 e T-26.
@@ -524,10 +524,9 @@ tenere qualcuno in più.
 un'informazione che nessuno ha e che vale più di una classifica: le classifiche mostrano chi c'è,
 non chi manca. Si ricava dalla data dell'ultimo movimento.
 
-**Quanto ci mette a saldare, non quanto deve.** Un cliente con 200 € che paga ogni dieci giorni è
-un buon cliente; uno con 40 € fermi da tre mesi no. Oggi i Crediti ordinano per anzianità del
-debito, che è il fotogramma; la velocità media di rientro è il film, e cambia chi solleciti per
-primo.
+Era stata proposta anche una terza misura — la velocità media con cui ogni cliente rientra dal
+debito, per ordinare i solleciti — ed è stata **scartata dal titolare**. I Crediti continuano a
+ordinare per anzianità del debito. Non va reintrodotta di nascosto dentro un'altra schermata.
 
 C'è anche il rovescio di T-26: **il prodotto che non esce**. Sta a catalogo, occupa un riquadro
 nella griglia e allunga la ricerca a tutti. È la stessa vista letta dal basso.
