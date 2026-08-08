@@ -132,3 +132,37 @@ un costo che si paga tutte le volte, per un problema che si paga di rado. Ma se 
 qui sotto sarà la seconda, e a quel punto la regola si scrive.
 
 ---
+
+## 8 agosto 2026 — l'app si ferma per qualche secondo — **APERTA**
+
+> Voce aperta: il sintomo è confermato, la causa no. Si chiude quando è misurata, non quando
+> sembra spiegata. Scritta adesso perché un'ipotesi non annotata si riscopre da capo.
+
+**Cosa si è visto.** Usando l'app sui telefoni, ogni tanto sembra bloccarsi: qualche secondo di
+nulla, poi riparte. Per il resto funziona.
+
+**Ipotesi, da verificare.** `proxy.ts` gira prima di ogni richiesta e chiama
+`supabase.auth.getUser()`, che **non legge il cookie: interroga il server di Supabase**, in
+Irlanda. Il commento nel codice dice che fidarsi del cookie non basta, e per un controllo di
+sicurezza sarebbe vero — ma quella chiamata sta su una rotta il cui unico scopo è **decidere se
+mandare al login**, e il login è un fatto di interfaccia: i dati sono protetti da RLS sul
+database, non da questo redirect. Nel frattempo il service worker (`public/sw.js`) tratta le
+navigazioni con la rete per prima, quindi ogni cambio di schermata fa il giro completo
+telefono → Netlify → Irlanda → indietro, prima che compaia qualsiasi cosa. Sul wifi del bar sono
+i secondi che si vedono.
+
+**La prova che distingue.** È una domanda sola: **il blocco capita quando cambi schermata, o
+anche restando dentro la stessa a battere prodotti?**
+
+- Solo cambiando schermata → è `proxy.ts`, e la correzione è togliere il giro di rete dalla
+  strada critica.
+- Anche battendo prodotti dentro il conto → è altrove, e il primo sospetto diventa
+  `salvaCache()` in `lib/offline/cache-query.ts`, che serializza tutta la cache a ogni
+  cambiamento con un secondo di attesa.
+
+**Perché è annotata prima di essere risolta.** È il primo attrito trovato prima ancora che T-18
+cominciasse, e tocca il criterio che conta più di tutti: se l'app è più lenta del foglio, perde.
+Va misurata durante il collaudo con le stanghette, non corretta al volo — la regola di
+`08-COLLAUDO.md` §2 vale anche per chi scrive il codice.
+
+---

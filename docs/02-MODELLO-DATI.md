@@ -639,6 +639,47 @@ group by d.giornata;
 
 La differenza di cassa è una colonna calcolata: non si può sbagliare la sottrazione.
 
+### 4.1 Correzione richiesta dal titolare — l'unità è il turno, non la giornata
+
+Lo schema qui sopra è **da rifare prima di eseguirlo**. Dà per scontato che si chiuda una volta
+al giorno: `chiusure_giornaliere` ha `giornata date not null unique`. Nel locale vero i turni
+sono più d'uno, ogni barista fa la sua lettura quando smonta, lascia il fondo cassa al collega e
+ritira il resto. Con un `unique` sulla giornata, il secondo turno non può chiudere.
+
+**Il modello giusto è `chiusure_turno`**, senza vincolo di unicità sulla data, con l'ora di
+inizio e di fine. La giornata **non si memorizza**: è la somma dei turni che ricadono in quel
+giorno, ed è la stessa ragione per cui il saldo non si memorizza (DEC-02). Un totale giornaliero
+scritto da qualche parte diverge il giorno in cui un turno viene corretto.
+
+**Un turno non si apre.** Comincia dove è finito il precedente. Un pulsante "apri turno" è un
+pulsante che qualcuno dimentica di premere a fine servizio, e da lì in poi i conti sono sbagliati
+per tutti quelli dopo. L'unico pulsante è **chiudi turno**.
+
+**Il fondo cassa è un'impostazione, non un numero da ribattere ogni volta.** Se un turno ne
+lascia uno diverso, quello è un fatto da registrare, non da assorbire in silenzio.
+
+**Che cosa deve stare fuori dalla riconciliazione del cassetto.** È il punto in cui un gestionale
+per bar sbaglia, e vale la pena scriverlo prima di avere il codice: il cassetto si riconcilia con
+i **movimenti di contante**, non con il venduto. In un locale che segna, le due cose non
+coincidono mai.
+
+- Gli incassi con **carta** non sono mai entrati nel cassetto. Vanno mostrati, ma separati e
+  detti tali, o chi conta li cerca fra le banconote.
+- Il **credito concesso** nel turno non è denaro mancante: è merce uscita che si paga dopo. Se
+  compare vicino al conteggio, chi chiude farà la sottrazione sbagliata.
+- I **crediti rientrati in contanti** durante il turno **sono** nel cassetto e vanno contati,
+  anche se non sono vendite di oggi. È l'errore speculare del precedente.
+
+Da cui la regola della schermata: **atteso nel cassetto = fondo + incassato in contanti**, dove
+"incassato in contanti" comprende i crediti rientrati e non comprende nulla di ciò che è uscito a
+credito. La parola *venduto* non deve comparire in quella schermata.
+
+**Dipendenza da non ignorare.** "Il collega che smonta" presuppone che i colleghi abbiano un
+accesso ciascuno, e quello è T-41, Fase 4. Con un solo utente la chiusura di turno funziona lo
+stesso, ma non sa dire *chi* ha chiuso — e senza quel nome la lettura di cassa serve a metà.
+Si decide a T-22: o si anticipa T-41, o si mette un campo con il nome di chi chiude, che è brutto
+ma non richiede la Fase 4.
+
 ---
 
 ## 5. SQL — Fase 3 (magazzino)

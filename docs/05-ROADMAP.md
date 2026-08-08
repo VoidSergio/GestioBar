@@ -429,11 +429,18 @@ I criteri qui sotto si verificano solo **sui telefoni veri**: nessuno dei due si
 
 Fatto quando:
 
-- [ ] Su Android compare la richiesta di installazione — **da provare**
-- [ ] Su iPhone "Aggiungi a schermata Home" produce un'app a schermo intero senza barra del browser — **da provare**
-- [ ] L'icona è visibile e nitida su entrambi — **da provare**
+- [x] Su Android compare la richiesta di installazione — provato
+- [x] Su iPhone "Aggiungi a schermata Home" produce un'app a schermo intero senza barra del browser — provato
+- [x] L'icona è visibile e nitida su entrambi — provato
 - [x] Aprendo l'app senza rete si vedono i dati in cache, non una schermata di errore — la pagina `/offline` copre il caso della schermata mai aperta
 - [ ] Lighthouse mobile: PWA installabile, prestazioni ≥ 90 — **da lanciare sul sito pubblicato**
+
+**Provata l'8 agosto su iPhone, Android e iPad**: si installa e si apre a schermo intero su tutti
+e tre. Resta solo Lighthouse, che non si lancia dal telefono.
+
+**Ma è emerso un difetto che i criteri non prevedevano:** ogni tanto l'app si ferma per qualche
+secondo e poi riparte. Non è nella lista perché nessuno aveva pensato di misurare la latenza di
+una navigazione. È aperto come attrito, primo candidato di T-19, e l'ipotesi sta in `09-DIARIO.md`.
 
 ---
 
@@ -485,7 +492,7 @@ Questo è il vero criterio di uscita dalla Fase 1. Non "il codice è finito": "i
 |---|---|---|
 | T-20 | Schema cassa (`02-MODELLO-DATI.md` §4) | Le tabelle esistono, `v_riepilogo_giornata` gira |
 | T-21 | Registrazione incassi al banco senza conto | Un incasso rapido si registra in 2 tap |
-| T-22 | Schermata chiusura giornaliera — *la parte "cosa è stato scontrinato" è già fatta* | La differenza di cassa si calcola da sola e si può annotare la causale |
+| T-22 | Chiusura **di turno**, e la giornata come somma dei turni — *la parte "cosa è stato scontrinato" è già fatta* | Chi chiude scrive **un solo numero**, quanto c'è nel cassetto: differenza, da ritirare e fondo da lasciare li calcola l'app |
 | T-23 | Report giornata e settimana | Incassato per metodo, credito concesso, credito rientrato |
 | T-24 | Esportazione CSV | Il file si apre in Excel con gli importi in euro, virgola decimale, e le date leggibili |
 | T-25 | Classifica clienti — consumato e pagato, mese corrente e sempre | La somma della classifica del mese coincide con il totale battuto nel mese |
