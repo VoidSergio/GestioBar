@@ -55,7 +55,7 @@
 
 | Prodotto | Prezzo |
 |---|---|
-| Bitter | 2,50 |
+| Bitter | 2,50 — con aggiunta 3,00 |
 | Crodino | 2,50 |
 | Campari soda | 3,00 — con aggiunta (es. martini) 3,50 |
 | Bicicletta | 3,00 |
@@ -93,9 +93,9 @@ Le patatine sono un riquadro solo con due varianti e **nessuna "normale"**: il t
 
 ---
 
-**62 prodotti vendibili, 36 riquadri nella griglia.**
+**63 prodotti vendibili, 36 riquadri nella griglia.**
 
-Senza il modello a varianti (§3.4 di `02-MODELLO-DATI.md`) la griglia avrebbe 62 riquadri e sarebbe inutilizzabile su un telefono. Con il raggruppamento, ogni categoria sta in una schermata sola:
+Senza il modello a varianti (§3.4 di `02-MODELLO-DATI.md`) la griglia avrebbe 63 riquadri e sarebbe inutilizzabile su un telefono. Con il raggruppamento, ogni categoria sta in una schermata sola:
 
 | Categoria | Prodotti | Riquadri |
 |---|---|---|
@@ -103,11 +103,11 @@ Senza il modello a varianti (§3.4 di `02-MODELLO-DATI.md`) la griglia avrebbe 6
 | Acque | 4 | 3 |
 | Bibite | 4 | 4 |
 | Birre | 12 | 7 |
-| Aperitivi | 7 | 6 |
+| Aperitivi | 8 | 6 |
 | Vini | 4 | 1 |
 | Superalcolici | 4 | 3 |
 | Food | 4 | 3 |
-| **Totale** | **62** | **36** |
+| **Totale** | **63** | **36** |
 
 ### Regolarità osservate nel listino
 
