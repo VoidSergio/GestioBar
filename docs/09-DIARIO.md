@@ -165,4 +165,40 @@ cominciasse, e tocca il criterio che conta più di tutti: se l'app è più lenta
 Va misurata durante il collaudo con le stanghette, non corretta al volo — la regola di
 `08-COLLAUDO.md` §2 vale anche per chi scrive il codice.
 
+**Aggiornamento dell'8 agosto:** confermato dal titolare che il rallentamento capita **solo
+cambiando schermata**, mai restando dentro la stessa a battere prodotti. L'ipotesi `proxy.ts`
+regge; `salvaCache()` è scagionato. La correzione non è "fidarsi del cookie" ma `getClaims()`,
+che verifica la firma del token in locale con WebCrypto invece di interrogare il server: richiede
+che il progetto usi chiavi di firma asimmetriche, da verificare in dashboard. Rinviata per
+decisione del titolare: prima la sicurezza.
+
+---
+
+## 8 agosto 2026 — i movimenti si potevano modificare, e nessuno se n'era accorto
+
+**Cosa si è visto.** Audit di sicurezza chiesto dal titolare prima di aprire la Fase 2. Le
+policy della Fase 1 sono `for all to authenticated using (true)`: `for all` comprende anche
+`update`. Su `righe_conto` e `pagamenti` un `update pagamenti set importo_cent = 1` sarebbe
+passato.
+
+**Perché.** La cancellazione era stata protetta con cura — `trg_blocca_cancellazione_riga` con la
+finestra dei 60 secondi, `trg_blocca_cancellazione_pagamento` senza eccezioni — e la modifica no.
+Probabilmente perché di cancellare c'era il bisogno esplicito (la ✕ entro il minuto), mentre di
+modificare non c'era bisogno di nessuno: e quando una cosa non serve a nessuno, non si pensa a
+vietarla.
+
+**Cosa si è fatto.** `0015_immutabilita_movimenti.sql`: un `before update` su entrambe le tabelle
+che solleva un'eccezione. Verificato prima che l'app non ne avesse bisogno — su queste due
+tabelle `lib/offline/invio.ts` fa solo `insert` e `delete`. Le altre `update` restano permesse,
+perché non sono movimenti: `conti.stato`, `clienti.attivo`, il listino.
+
+**La regola.** Una regola sui soldi che vale solo finché il codice è corretto non è una regola, è
+una consuetudine. DEC-03 stava scritto in tre documenti ed era applicato da nessuna parte per
+metà dei casi. Quando si scrive una decisione sul denaro, la domanda da farsi è: *chi la
+impedisce?* Se la risposta è "l'app", non è impedita.
+
+**Da rifare alla Fase 2.** Le stesse due domande su `movimenti_cassa` e sulle chiusure di turno:
+si cancellano? si modificano? Una chiusura di turno è la dichiarazione di una persona su quanto
+c'era nel cassetto — se si riscrive dopo, non dichiara più niente.
+
 ---
