@@ -668,7 +668,9 @@ coincidono mai.
 - Il **credito concesso** nel turno non è denaro mancante: è merce uscita che si paga dopo. Se
   compare vicino al conteggio, chi chiude farà la sottrazione sbagliata.
 - I **crediti rientrati in contanti** durante il turno **sono** nel cassetto e vanno contati,
-  anche se non sono vendite di oggi. È l'errore speculare del precedente.
+  anche se non sono vendite di oggi. È l'errore speculare del precedente. Il titolare ha però
+  chiesto di **non mostrarli su una riga a parte**: entrano dentro "incassato in contanti" e
+  basta. Chi chiude deve confrontare due numeri, non leggerne quattro.
 
 Da cui la regola della schermata: **atteso nel cassetto = fondo + incassato in contanti**, dove
 "incassato in contanti" comprende i crediti rientrati e non comprende nulla di ciò che è uscito a
@@ -679,6 +681,87 @@ accesso ciascuno, e quello è T-41, Fase 4. Con un solo utente la chiusura di tu
 stesso, ma non sa dire *chi* ha chiuso — e senza quel nome la lettura di cassa serve a metà.
 Si decide a T-22: o si anticipa T-41, o si mette un campo con il nome di chi chiude, che è brutto
 ma non richiede la Fase 4.
+
+### 4.2 Come si svolge un turno — esempio con fondo cassa 80 €
+
+**Per cominciare un turno non si fa niente.** Zero tap. Il turno comincia da solo dove è finito
+il precedente: si arriva, si trovano 80 € nel cassetto, si lavora. L'unica cosa da guardare è che
+il fondo sia davvero 80 — ma quello è il lavoro di chi ha chiuso prima, non di chi apre.
+
+**Per finire si fa una cosa sola:** Altro → *Chiudi turno*, si contano i soldi, si scrive quanto
+c'è. Poi si ritira quello che l'app dice e si lasciano 80.
+
+#### Turno del mattino, 6:00 → 13:00
+
+Nel turno sono stati battuti 412,00 € di consumazioni: 231,50 pagati subito in contanti, 96,00
+con la carta, 84,50 lasciati a credito. Più 45,00 di vecchi debiti saldati in contanti da due
+clienti.
+
+```
+CHIUSURA TURNO                      6:00 → 13:00
+
+Fondo cassa                             80,00
+Incassato in contanti                  276,50
+────────────────────────────────────────────────
+Atteso nel cassetto                    356,50
+
+Contato nel cassetto              [   355,00 ]
+────────────────────────────────────────────────
+Differenza                            − 1,50
+
+RITIRA                                 275,00
+LASCIA IN CASSA                         80,00
+
+Non è nel cassetto: 96,00 con carta · 84,50 a credito
+```
+
+I 45,00 di crediti rientrati stanno dentro i 276,50 e non compaiono da nessuna parte, come
+chiesto. I 412,00 di venduto non compaiono affatto: non servono a chi conta i soldi, e messi lì
+farebbero fare la sottrazione sbagliata.
+
+Mancano 1,50. Si annota la causale e si va a casa: la differenza si registra, non si aggiusta.
+
+#### Turno della sera, 13:00 → 20:30
+
+Comincia da solo alle 13:00, nel cassetto ci sono gli 80 lasciati dal collega. Incassato in
+contanti 189,00, con la carta 54,00, a credito 60,00.
+
+```
+Fondo cassa                             80,00
+Incassato in contanti                  189,00
+────────────────────────────────────────────────
+Atteso nel cassetto                    269,00
+Contato nel cassetto              [   269,00 ]
+────────────────────────────────────────────────
+Differenza                               0,00
+
+RITIRA                                 189,00
+LASCIA IN CASSA                         80,00
+```
+
+#### La giornata
+
+**Non c'è un pulsante "chiusura giornaliera".** L'ultima chiusura di turno della sera *è* la
+chiusura della giornata: sotto il riepilogo del turno l'app aggiunge quello del giorno, che è la
+somma dei turni e non viene scritto da nessuna parte.
+
+```
+GIORNATA — 8 agosto
+
+Incassato in contanti                  465,50
+Incassato con carta                    150,00
+Lasciato a credito                     144,50
+Differenza di cassa                    − 1,50
+Ritirato in totale                     464,00
+```
+
+Gli 80 € restano nel cassetto per domattina. Se invece vanno in cassaforte, il fondo si registra
+come prelievo e si rimette il mattino dopo — ma è una scelta del locale, non del sistema.
+
+**Se qualcuno dimentica di chiudere**, il turno dopo si porta dietro il precedente e i conti di
+due persone si mescolano. Non è impedibile, ma è rendibile evidente: la schermata mostra sempre
+**da quando** è aperto il turno, e un turno che risulta cominciato ieri sera si vede al primo
+sguardo.
 
 ---
 
