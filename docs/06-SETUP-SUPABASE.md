@@ -161,6 +161,49 @@ Per aggiungere un barista, ripeti la stessa procedura: il ruolo sarà `barista` 
 
 ---
 
+## 5.1 Chiudere la registrazione libera — **il passo che regge tutto il resto**
+
+**Authentication** → **Sign In / Providers** → sezione **User Signups** → spegni
+**"Allow new users to sign up"** → **Save changes**.
+
+È acceso di default, e finché lo è **chiunque conosca l'indirizzo del sito può crearsi un account
+ed entrare**. Non serve indovinare niente: si registra, conferma la mail — la sua, va benissimo —
+e si trova dentro.
+
+**Perché è il passo che regge tutto il resto.** Le policy della Fase 1 sono
+`for all to authenticated using (true)`: chi è autenticato può leggere e scrivere tutto. È una
+scelta consapevole e scritta, e ha senso per un locale dove lavora una persona sola. Ma ha una
+condizione che non era scritta da nessuna parte, e adesso lo è: **vale solo se gli account li
+crei tu.** Con la registrazione aperta, quel `using (true)` smette di essere una semplificazione
+e diventa una porta.
+
+È anche la risposta agli avvisi **"RLS Policy Always True"** che il Security Advisor mostra su
+`clienti`, `conti`, `pagamenti`, `righe_conto`, `prodotti` e `categorie`. Non sono errori: sono
+quella scelta. Diventano accettabili nel momento in cui nessuno può procurarsi un accesso, e non
+prima. Si stringeranno a T-40, quando i baristi avranno ruoli diversi.
+
+Dopo averlo spento, controlla chi c'è: **Authentication** → **Users**. Se compare qualcuno che
+non hai creato tu, non è un falso allarme.
+
+Gli utenti che ti servono continui a crearli dalla dashboard come al §5. Chi è già dentro non
+viene toccato: si spegne la registrazione, non l'accesso.
+
+### Mentre sei lì, tre voci nel provider Email
+
+**Authentication** → **Sign In / Providers** → **Email**:
+
+- **Require current password when updating** — accendilo. Spento, chi mette le mani su un
+  telefono già collegato cambia la password senza sapere la vecchia, e ti chiude fuori dal tuo
+  gestionale. In un bar i telefoni stanno sul banco.
+- **Secure password change** — accendilo, stessa famiglia.
+- **Minimum password length** — da 6 a 10. La password la digiti di rado, il telefono resta
+  collegato.
+
+**Leaked Password Protection** richiede il piano Pro e resterà segnalata dal Security Advisor.
+Si sostituisce scegliendo una password che non hai usato altrove.
+
+---
+
 ## 6. Backup
 
 Supabase fa i suoi backup, ma il piano gratuito ne conserva pochi giorni. Per un dato che rappresenta soldi veri, tienine anche una copia tua.

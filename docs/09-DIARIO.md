@@ -202,3 +202,39 @@ si cancellano? si modificano? Una chiusura di turno è la dichiarazione di una p
 c'era nel cassetto — se si riscrive dopo, non dichiara più niente.
 
 ---
+
+## 8 agosto 2026 — la registrazione era aperta a chiunque, da sempre
+
+**Cosa si è visto.** Nella dashboard Supabase, **Authentication → Sign In / Providers → User
+Signups**, la voce *"Allow new users to sign up"* risultava **accesa**. L'app è pubblicata su
+Netlify da giorni. Chiunque conoscesse l'indirizzo poteva registrarsi, confermare la propria
+mail, entrare, e leggere e scrivere tutto: clienti, conti, debiti, pagamenti.
+
+**Perché.** È il valore predefinito di Supabase, e nessuno lo aveva spento perché nessuno lo
+aveva nominato: `06-SETUP-SUPABASE.md` accompagnava passo passo dalla registrazione alle
+migrazioni al primo utente, e questa voce non c'era. Un passo che non è scritto in una guida
+scritta bene sembra un passo che non esiste.
+
+La causa più profonda però è un'altra, ed è di progetto. Le policy della Fase 1 sono
+`for all to authenticated using (true)`, scelta consapevole e motivata nei commenti di
+`0003_sicurezza.sql`: lavora una persona sola, stringere le regole adesso vorrebbe dire scriverle
+su un'ipotesi. Il ragionamento è giusto **ma poggia su una condizione che non era scritta da
+nessuna parte**: che gli account li crei il titolare. Finché quella condizione resta implicita,
+nessuno la verifica — e infatti non è stata verificata per giorni.
+
+**Cosa si è fatto.** Registrazione spenta. Aggiunto `06-SETUP-SUPABASE.md` §5.1, con dentro anche
+il legame con gli avvisi *"RLS Policy Always True"* del Security Advisor: non sono errori, sono
+quella scelta, e sono accettabili **solo** a registrazione chiusa. Controllato l'elenco utenti
+per vedere se qualcuno si fosse registrato.
+
+**La regola.** Quando una semplificazione è accettabile *a condizione che*, la condizione va
+scritta accanto alla semplificazione, non tenuta a mente. Un commento che dice "per ora va bene
+così" deve dire anche **cosa lo rende vero**, altrimenti resta vero solo finché qualcuno se lo
+ricorda.
+
+**Il seguito.** Le migrazioni `0003` e `0010` sono già applicate e non si toccano (voce del 7
+agosto). La condizione vive quindi nella documentazione, non nel codice — il che è meno solido di
+quanto vorrei. A T-40, quando le policy si stringeranno per ruolo, va tolta la dipendenza da
+un'impostazione della dashboard.
+
+---
