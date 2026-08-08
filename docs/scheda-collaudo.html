@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<style>
+  @page { size: A4 portrait; margin: 9mm 10mm 8mm 10mm; }
+  * { box-sizing: border-box; }
+  body { font-family: "DejaVu Sans", Helvetica, Arial, sans-serif; color: #000; margin: 0; }
+
+  .testata { display: flex; justify-content: space-between; align-items: flex-end;
+             border-bottom: 2.2pt solid #000; padding-bottom: 2mm; margin-bottom: 3mm; }
+  .titolo { font-size: 15pt; font-weight: bold; letter-spacing: 0.4pt; }
+  .sottotitolo { font-size: 7.5pt; margin-top: 1mm; }
+  .campi { font-size: 10pt; text-align: right; white-space: nowrap; }
+  .campi span { display: inline-block; border-bottom: 1pt solid #000; }
+
+  h2 { font-size: 10pt; margin: 0 0 1.5mm 0; text-transform: uppercase; letter-spacing: 0.7pt; }
+  h2 small { font-weight: normal; text-transform: none; letter-spacing: 0; font-size: 7.5pt; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 7.5pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.3pt;
+       background: #e8e8e8; border: 1pt solid #000; padding: 1.2mm 1.5mm; text-align: left; }
+  td { border: 0.7pt solid #000; padding: 0; }
+  .righello td { height: 10.2mm; }
+  .conti td { height: 8.2mm; }
+  .c { text-align: center; }
+  .sub { font-size: 6.5pt; font-weight: normal; text-transform: none; letter-spacing: 0; display: block; }
+
+  .stretta { width: 9%; }
+
+  .sezione { margin-bottom: 3.5mm; }
+
+  .sera { display: flex; gap: 4mm; }
+  .sera > div:first-child { flex: 1.35; }
+  .sera > div:last-child { flex: 1; }
+
+  .lista { font-size: 8.6pt; line-height: 1.85; }
+  .lista div { border-bottom: 0.5pt dotted #999; padding-bottom: 0.6mm; }
+  .box { display: inline-block; width: 3.4mm; height: 3.4mm; border: 1pt solid #000;
+         margin-right: 2mm; vertical-align: -0.4mm; }
+  .lista em { font-style: normal; font-size: 7.2pt; color: #444; }
+
+  .crono { border: 1pt solid #000; padding: 2mm 2.5mm; font-size: 8.4pt; line-height: 2.1; }
+  .crono b { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.4pt; }
+  .u { display: inline-block; border-bottom: 1pt solid #000; min-width: 11mm; }
+
+  .piede { margin-top: 2.5mm; border-top: 1.4pt solid #000; padding-top: 1.5mm;
+           font-size: 7.4pt; display: flex; justify-content: space-between; }
+</style>
+</head>
+<body>
+
+<div class="testata">
+  <div>
+    <div class="titolo">Collaudo — scheda della giornata</div>
+    <div class="sottotitolo">Gestionale Bar · T-18 · il foglio di carta si tiene in parallelo tutti e sette i giorni</div>
+  </div>
+  <div class="campi">
+    Giorno <span style="width:12mm"></span> di 7<br>
+    Data <span style="width:30mm"></span>
+  </div>
+</div>
+
+<div class="sezione">
+  <h2>Attriti <small>— ogni volta che hai pensato «uffa». Se ricapita, una stanghetta sulla riga che c'è già, non una riga nuova.</small></h2>
+  <table>
+    <tr>
+      <th style="width:56%">Cosa è successo <span class="sub">con parole tue, una riga</span></th>
+      <th class="c stretta">Sbagliato <span class="sub">un numero, un dato</span></th>
+      <th class="c stretta">Lento <span class="sub">peggio del foglio</span></th>
+      <th class="c stretta">Fastidio <span class="sub">ma non rallenta</span></th>
+      <th class="c" style="width:17%">Ricapitato <span class="sub">una stanghetta a volta</span></th>
+    </tr>
+    <tbody class="righello">
+      <tr><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td><td></td><td></td></tr>
+      <tr><td></td><td></td><td></td><td></td><td></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="sera">
+  <div class="sezione">
+    <h2>La sera — i saldi contro il foglio</h2>
+    <table>
+      <tr>
+        <th style="width:46%">Cliente</th>
+        <th class="c" style="width:18%">App</th>
+        <th class="c" style="width:18%">Foglio</th>
+        <th class="c" style="width:18%">Differenza</th>
+      </tr>
+      <tbody class="conti">
+        <tr><td></td><td></td><td></td><td></td></tr>
+        <tr><td></td><td></td><td></td><td></td></tr>
+        <tr><td></td><td></td><td></td><td></td></tr>
+        <tr><td></td><td></td><td></td><td></td></tr>
+        <tr><td></td><td></td><td></td><td></td></tr>
+        <tr><td></td><td></td><td></td><td></td></tr>
+        <tr><td></td><td></td><td></td><td></td></tr>
+        <tr><td></td><td></td><td></td><td></td></tr>
+        <tr><td></td><td></td><td></td><td></td></tr>
+      </tbody>
+    </table>
+    <div style="font-size:7.2pt; margin-top:1mm;">Se un saldo non torna: scrivi prima la differenza in euro, il perché lo cerchi dopo.</div>
+  </div>
+
+  <div>
+    <div class="sezione">
+      <h2>Prima di andare a casa</h2>
+      <div class="lista">
+        <div><span class="box"></span>Saldi confrontati col foglio</div>
+        <div><span class="box"></span>Riletto gli attriti, aggiunto quelli persi</div>
+        <div><span class="box"></span>Coda vuota <em>— se è rosso, si risolve stasera</em></div>
+        <div><span class="box"></span>Non ho aperto l'editor <em>— si corregge a T-19</em></div>
+      </div>
+    </div>
+
+    <div class="crono">
+      <b>Cronometro</b> <span style="font-size:7pt">— solo nei giorni in cui lo fai</span><br>
+      Caffè a un cliente: <span class="u"></span> tap, <span class="u"></span> sec<br>
+      Lo stesso caffè sul foglio: <span class="u"></span> sec<br>
+      Avvio app, cache calda: <span class="u"></span> sec<br>
+      C'era fila? <span class="u" style="min-width:8mm"></span> &nbsp; Mani bagnate? <span class="u" style="min-width:8mm"></span>
+    </div>
+  </div>
+</div>
+
+<div class="piede">
+  <div><b>Se l'app ti rallenta davanti a un cliente, molla l'app e usa il foglio.</b> Poi annota.</div>
+  <div>Protocollo completo: <b>docs/08-COLLAUDO.md</b></div>
+</div>
+
+</body>
+</html>

@@ -28,7 +28,7 @@
 | Scontrini | ✅ fatta | **anticipata dalla Fase 2** su richiesta del titolare |
 | T-16 Listino | 🟨 quasi | prezzi, varianti, preferiti, disattivazione. **Manca il riordino per trascinamento** |
 | T-17 PWA | 🟨 quasi | service worker scritto a mano, pagina offline. **Da provare sui telefoni e con Lighthouse** |
-| T-18 Collaudo | ⬜ prossimo | una settimana dietro il banco, col foglio in parallelo |
+| T-18 Collaudo | ⬜ prossimo | una settimana dietro il banco, col foglio in parallelo — protocollo e scheda pronti in `08-COLLAUDO.md` |
 
 **Fase 0 chiusa.** L'app è pubblicata su Netlify, 158 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
 
@@ -444,6 +444,12 @@ File toccati: nessuno
 
 Cosa fare: usare l'app dietro il banco per una settimana, annotando ogni attrito.
 
+**Il protocollo sta in [`08-COLLAUDO.md`](08-COLLAUDO.md)**: come si misura ogni criterio qui
+sotto, come si annota un attrito, e i criteri arretrati di T-10, T-11, T-12, T-13, T-14 e T-17
+che si spuntano per strada perché a tavolino non si potevano verificare. Si legge una volta, la
+sera prima di cominciare. Dietro il banco serve solo `scheda-collaudo.pdf`, fotocopiata sette
+volte.
+
 Fatto quando:
 
 - [ ] Un caffè a un cliente esistente si registra in 3 tap dalla home, cronometrato
@@ -482,6 +488,49 @@ Questo è il vero criterio di uscita dalla Fase 1. Non "il codice è finito": "i
 | T-22 | Schermata chiusura giornaliera — *la parte "cosa è stato scontrinato" è già fatta* | La differenza di cassa si calcola da sola e si può annotare la causale |
 | T-23 | Report giornata e settimana | Incassato per metodo, credito concesso, credito rientrato |
 | T-24 | Esportazione CSV | Il file si apre in Excel con gli importi in euro, virgola decimale, e le date leggibili |
+| T-25 | Classifica clienti — consumato e pagato, mese corrente e sempre | La somma della classifica del mese coincide con il totale battuto nel mese |
+| T-26 | Che cosa esce — prodotti venduti per periodo | Il numero di caffè del mese coincide con il conteggio fatto a mano su un giorno campione |
+| T-27 | Storico per prodotto dentro la scheda cliente, con filtro per giorno | Scelto un giorno, si vede che cosa ha preso quel cliente e a che ora |
+
+### Perché T-25, T-26 e T-27 costano poco
+
+**Non serve nessuna tabella nuova.** Sono tre letture su `righe_conto`, che già congela
+`descrizione` e `prezzo_unitario_cent` (DEC-05) e già registra `creato_il` al secondo. Il lavoro
+è tutto nelle viste e nell'interfaccia — sono le funzioni con il miglior rapporto fra ciò che
+danno e ciò che costano di tutta la Fase 2.
+
+**Gli storni si tolgono da soli.** Una riga stornata ha `quantita` negativa per vincolo di
+schema, quindi `sum(quantita)` e `sum(importo_cent)` sono già netti. Non va scritto nessun filtro
+speciale, e soprattutto non va scritto `where storno_di is null`: toglierebbe lo storno ma
+lascerebbe la riga sbagliata dentro il conteggio.
+
+**Il buco vero è il Banco.** I conti anonimi non hanno cliente, quindi restano fuori da T-25 per
+costruzione — e in un bar sono spesso la maggioranza del giro. La classifica dice "chi fra i
+clienti che conosco spende di più", non "da dove vengono i miei soldi". Va scritto nella
+schermata, altrimenti il totale sembra sbagliato. T-26 invece li comprende tutti: quello che esce
+esce, che sia segnato o pagato subito.
+
+### Tre cose che varrebbe la pena guardare, e a cui di solito non si pensa
+
+Non sono task e non hanno un numero: sono domande che i dati sanno già rispondere, da valutare
+quando si scriveranno T-25 e T-26.
+
+**A che ora si lavora.** `creato_il` c'è su ogni riga: si può sapere l'ora di punta per giorno
+della settimana senza aggiungere niente. È probabilmente l'analisi più utile di tutte, perché è
+l'unica che cambia una decisione vera — quando stare dietro al banco, quando preparare, quando
+tenere qualcuno in più.
+
+**Chi è sparito.** Un cliente che veniva ogni mattina e non si vede da tre settimane è
+un'informazione che nessuno ha e che vale più di una classifica: le classifiche mostrano chi c'è,
+non chi manca. Si ricava dalla data dell'ultimo movimento.
+
+**Quanto ci mette a saldare, non quanto deve.** Un cliente con 200 € che paga ogni dieci giorni è
+un buon cliente; uno con 40 € fermi da tre mesi no. Oggi i Crediti ordinano per anzianità del
+debito, che è il fotogramma; la velocità media di rientro è il film, e cambia chi solleciti per
+primo.
+
+C'è anche il rovescio di T-26: **il prodotto che non esce**. Sta a catalogo, occupa un riquadro
+nella griglia e allunga la ricerca a tutti. È la stessa vista letta dal basso.
 
 ---
 

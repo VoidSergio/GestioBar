@@ -15,6 +15,8 @@ Sistema mobile-first per gestire conti aperti e clienti che pagano in ritardo.
 | 05 | [`05-ROADMAP.md`](05-ROADMAP.md) | 44 task in 4 fasi, con criteri di accettazione verificabili | All'agente, e a te per seguire l'avanzamento |
 | 06 | [`06-SETUP-SUPABASE.md`](06-SETUP-SUPABASE.md) | Guida passo passo, senza terminale, dalla registrazione al backup | **A te.** È il primo lavoro pratico |
 | 07 | [`07-LISTINO.md`](07-LISTINO.md) | Il tuo listino reale con SQL pronto, il modello a varianti | A entrambi |
+| 08 | [`08-COLLAUDO.md`](08-COLLAUDO.md) | Protocollo della settimana dietro il banco: come si misura ogni criterio di T-18, come si annota un attrito | **A te.** Si legge la sera prima di cominciare |
+| — | [`scheda-collaudo.pdf`](scheda-collaudo.pdf) | La scheda di carta da fotocopiare sette volte e tenere dietro il banco | **A te.** È l'unica cosa che serve durante il servizio |
 | — | [`CLAUDE.md`](CLAUDE.md) | Regole assolute per chi scrive il codice | All'agente, automaticamente |
 
 ---
@@ -65,13 +67,12 @@ Sistema mobile-first per gestire conti aperti e clienti che pagano in ritardo.
 | Area | Stato |
 |---|---|
 | Progettazione | Completa |
-| Listino (8 categorie) | 59 prodotti, 34 riquadri — SQL pronto |
+| Listino (8 categorie) | 63 prodotti, 36 riquadri |
 | Brioche, panini e voci residue | Da completare — `07-LISTINO.md` §5 |
-| Migrazioni SQL | Scritte e validate in `supabase/migrations/` |
-| Progetto Next.js | Creato — build, lint e 22 test verdi |
+| Migrazioni SQL | 14 file in `supabase/migrations/`, eseguite |
 | Modulo denaro | Fatto, con controllo automatico della regola dei centesimi |
-| Setup Supabase | Fatto — 8 migrazioni eseguite, database attivo |
-| Autenticazione (T-06) | Fatta — accesso, protezione rotte, uscita |
-| App vera (conti, clienti, crediti) | Da costruire — **T-07 in poi** |
+| Fase 0 e Fase 1 (T-01 → T-17) | Fatte — app pubblicata su Netlify, 216 test verdi |
+| Il giro completo | Funziona: apri, batti, confermi, incassi o lasci a credito |
+| **Adesso** | **T-18, la settimana dietro il banco** — `08-COLLAUDO.md` |
 
 Per far partire il progetto: `npm install`, poi il `README.md` alla radice.
