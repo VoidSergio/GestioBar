@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "verifica:denaro": "node scripts/verifica-denaro.mjs",
+    "verifica:migrazioni": "node scripts/verifica-migrazioni.mjs",
     "tipi": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > lib/supabase/tipi.ts"
   },
   "dependencies": {
@@ -26,6 +27,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.4",
     "@netlify/plugin-nextjs": "^5.15.13",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22.15.0",

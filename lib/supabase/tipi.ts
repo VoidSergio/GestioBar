@@ -204,6 +204,66 @@ export type RiquadroGriglia = {
   varianti: VarianteProdotto[];
 };
 
+/* ------------------------------------------------------------- cassa */
+
+export type Impostazione = {
+  chiave: string;
+  valore: string;
+  descrizione: string | null;
+  aggiornato_il: string;
+};
+
+/**
+ * Una chiusura di turno (0016_cassa_turni.sql).
+ *
+ * Gli importi sono memorizzati e non ricalcolati, contro l'abitudine di
+ * DEC-02: non è un saldo, è la dichiarazione di una persona su quanto c'era
+ * nel cassetto a un certo minuto. Il perché sta in 02-MODELLO-DATI §4.1.
+ */
+export type ChiusuraTurno = {
+  id: string;
+  iniziato_il: string;
+  chiuso_il: string;
+  fondo_cassa_cent: number;
+  contato_cent: number;
+  incassato_contanti_cent: number;
+  incassato_carta_cent: number;
+  incassato_altro_cent: number;
+  variazione_credito_cent: number;
+  /** calcolate dal database: fondo + contanti, contato − atteso, contato − fondo */
+  atteso_cent: number;
+  differenza_cent: number;
+  ritirato_cent: number;
+  causale: string | null;
+  chiuso_da: string;
+  op_id: string;
+};
+
+/** Il turno aperto adesso: quello che la schermata mostra prima del conteggio. */
+export type TurnoCorrente = {
+  iniziato_il: string;
+  fondo_cassa_cent: number;
+  incassato_contanti_cent: number;
+  incassato_carta_cent: number;
+  incassato_altro_cent: number;
+  /** consumato a credito meno vecchi debiti rientrati */
+  variazione_credito_cent: number;
+  n_pagamenti: number;
+};
+
+export type RiepilogoGiornata = {
+  giornata: string;
+  n_turni: number;
+  dalle: string;
+  alle: string;
+  incassato_contanti_cent: number;
+  incassato_carta_cent: number;
+  incassato_altro_cent: number;
+  variazione_credito_cent: number;
+  ritirato_cent: number;
+  differenza_cent: number;
+};
+
 /* ------------------------------------------------- schema per il client */
 
 /**
@@ -262,6 +322,27 @@ export interface Database {
         Update: Partial<Pagamento>;
         Relationships: [];
       };
+      impostazioni: {
+        Row: Impostazione;
+        Insert: Partial<Impostazione> & { chiave: string; valore: string };
+        Update: Partial<Impostazione>;
+        Relationships: [];
+      };
+      chiusure_turno: {
+        Row: ChiusuraTurno;
+        // Le tre colonne calcolate le scrive il database: se comparissero
+        // qui, un giorno qualcuno le manderebbe e Postgres rifiuterebbe.
+        Insert: Omit<Partial<ChiusuraTurno>, 'atteso_cent' | 'differenza_cent' | 'ritirato_cent'> & {
+          iniziato_il: string;
+          fondo_cassa_cent: number;
+          contato_cent: number;
+          incassato_contanti_cent: number;
+          chiuso_da: string;
+          op_id: string;
+        };
+        Update: never;
+        Relationships: [];
+      };
     };
     Views: {
       v_saldo_clienti: { Row: SaldoCliente; Relationships: [] };
@@ -269,6 +350,8 @@ export interface Database {
       v_estratto_conto: { Row: MovimentoEstrattoConto; Relationships: [] };
       v_griglia_prodotti: { Row: RiquadroGriglia; Relationships: [] };
       v_scontrini: { Row: MovimentoScontrino; Relationships: [] };
+      v_turno_corrente: { Row: TurnoCorrente; Relationships: [] };
+      v_riepilogo_giornata: { Row: RiepilogoGiornata; Relationships: [] };
     };
     Functions: Record<string, never>;
     Enums: Record<string, never>;

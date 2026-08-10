@@ -20,6 +20,13 @@ export default function PaginaOffline() {
         Senza rete l&apos;app apre solo le schermate già viste. I conti che stai battendo sono al
         sicuro sul telefono: partiranno da soli appena torna la linea.
       </p>
+      {/*
+        `<a>` e non `<Link>`, di proposito. Questa pagina compare quando il
+        router di Next non è mai partito: una navigazione lato client non
+        avrebbe nulla su cui girare, mentre un caricamento vero fa ritentare
+        il service worker e, se la rete è tornata, l'app riparte davvero.
+      */}
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
       <a
         href="/"
         className="mt-4 flex h-14 items-center rounded-xl bg-[var(--color-accento)] px-8 font-semibold text-[var(--color-sfondo)]"

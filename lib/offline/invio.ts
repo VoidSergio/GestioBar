@@ -267,6 +267,28 @@ export async function inviaOperazione(opId: string, op: Operazione): Promise<Esi
           .eq('stato', 'aperto');
         return esito(error);
       }
+
+      case 'chiudi_turno': {
+        // Gli importi arrivano già calcolati dal dispositivo: sono la
+        // fotografia di quello che chi ha contato aveva davanti. Le tre
+        // colonne derivate — atteso, differenza, ritirato — le scrive il
+        // database, e sono l'unico posto in cui quella sottrazione avviene.
+        const { error } = await sb.from('chiusure_turno').insert({
+          id: op.dati.id,
+          iniziato_il: op.dati.iniziatoIl,
+          chiuso_il: op.dati.chiusoIl,
+          fondo_cassa_cent: op.dati.fondoCassaCent,
+          contato_cent: op.dati.contatoCent,
+          incassato_contanti_cent: op.dati.incassatoContantiCent,
+          incassato_carta_cent: op.dati.incassatoCartaCent,
+          incassato_altro_cent: op.dati.incassatoAltroCent,
+          variazione_credito_cent: op.dati.variazioneCreditoCent,
+          causale: op.dati.causale,
+          chiuso_da: op.dati.chiusoDa,
+          op_id: opId,
+        });
+        return esito(error);
+      }
     }
   } catch (e) {
     // Rete assente: la richiesta non è nemmeno partita.

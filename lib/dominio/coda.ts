@@ -118,7 +118,34 @@ export type Operazione =
         scontrinoBattuto: boolean;
       };
     }
-  | { tipo: 'chiudi_conto'; dati: { contoId: string } };
+  | { tipo: 'chiudi_conto'; dati: { contoId: string } }
+  | {
+      /**
+       * La lettura di cassa di fine turno (T-22).
+       *
+       * Porta con sé tutti gli importi invece di farli ricalcolare al server,
+       * ed è voluto. Una chiusura è la dichiarazione di una persona su quanto
+       * c'era nel cassetto a un certo minuto: se il server la ricalcolasse al
+       * momento in cui la coda si svuota — che offline può essere ore dopo —
+       * scriverebbe numeri che chi ha contato non ha mai visto.
+       */
+      tipo: 'chiudi_turno';
+      dati: {
+        id: string;
+        /** presi dal dispositivo, come per `salva_conto` (ISO 8601) */
+        iniziatoIl: string;
+        chiusoIl: string;
+        fondoCassaCent: number;
+        contatoCent: number;
+        incassatoContantiCent: number;
+        incassatoCartaCent: number;
+        incassatoAltroCent: number;
+        variazioneCreditoCent: number;
+        causale: string | null;
+        /** deve coincidere con auth.uid(): lo pretende la policy di inserimento */
+        chiusoDa: string;
+      };
+    };
 
 export type StatoVoce = 'in_attesa' | 'in_invio' | 'fallita';
 
@@ -148,6 +175,7 @@ export function produce(op: Operazione): string | null {
     case 'aggiungi_riga':
     case 'storna_riga':
     case 'registra_pagamento':
+    case 'chiudi_turno':
       return op.dati.id;
     case 'elimina_riga':
     case 'chiudi_conto':
@@ -192,6 +220,12 @@ export function richiede(op: Operazione): string[] {
     case 'sposta_riga':
       // Servono la riga da cui si toglie e la persona a cui si addebita.
       return [op.dati.rigaOrigineId, op.dati.clienteDestinazioneId];
+    case 'chiudi_turno':
+      // Niente: gli importi viaggiano dentro l'operazione, non si leggono dal
+      // server. Una chiusura ferma dietro un conto che non parte sarebbe la
+      // cosa peggiore — è proprio quella che il barista vuole essersi
+      // lasciato alle spalle prima di andare a casa.
+      return [];
   }
 }
 
@@ -359,5 +393,7 @@ export function descriviOperazione(op: Operazione): string {
       return `Disattivazione di ${op.dati.nome}`;
     case 'elimina_cliente':
       return `Cancellazione di ${op.dati.nome}`;
+    case 'chiudi_turno':
+      return 'Chiusura di un turno di cassa';
   }
 }

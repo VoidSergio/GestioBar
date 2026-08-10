@@ -27,10 +27,15 @@ const VOCI = [
     titolo: 'Listino',
     descrizione: 'Prezzi, varianti, preferiti',
   },
+  {
+    href: '/turno',
+    icona: '💶',
+    titolo: 'Chiudi turno',
+    descrizione: 'Conta il cassetto, ritira, lascia il fondo',
+  },
 ] as const;
 
 const IN_ARRIVO = [
-  { icona: '💶', titolo: 'Cassa', quando: 'chiusura giornaliera — Fase 2' },
   { icona: '📦', titolo: 'Magazzino', quando: 'giacenze e carichi — Fase 3' },
 ] as const;
 

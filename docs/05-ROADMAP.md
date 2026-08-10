@@ -488,11 +488,26 @@ Questo è il vero criterio di uscita dalla Fase 1. Non "il codice è finito": "i
 
 ## FASE 2 — Cassa (solo dopo T-19)
 
+> **T-20 e T-22 sono stati fatti l'8 agosto, prima di T-18 e T-19.** È il secondo strappo alla
+> regola dopo gli Scontrini, e come quello va scritto invece che nascosto.
+>
+> Il motivo è che il bisogno non era "la cassa": era che **a fine turno un collega deve poter
+> smontare lasciando i conti in ordine**, e finché quel gesto non esiste il foglio di carta resta
+> in mano a due persone invece che a una. Non era rinviabile a dopo il collaudo, perché il
+> collaudo si fa anche con i colleghi.
+>
+> Il costo lo si paga se T-18 dovesse rimettere in discussione qualcosa che sta sotto. Il rischio
+> è contenuto: la chiusura di turno non tocca conti, righe né pagamenti — legge e basta — e la
+> tabella nuova non è referenziata da nessuna delle esistenti. Se il collaudo bocciasse qualcosa,
+> si toglie senza strascichi.
+>
+> **T-21, T-23 e T-24 restano fermi fino a T-19.**
+
 | Task | Contenuto | Criterio principale |
 |---|---|---|
-| T-20 | Schema cassa (`02-MODELLO-DATI.md` §4) | Le tabelle esistono, `v_riepilogo_giornata` gira |
+| T-20 | ✅ Schema cassa (`02-MODELLO-DATI.md` §4.1) | Fatto — `0016_cassa_turni.sql`, 17 controlli automatici in `npm run verifica:migrazioni` |
 | T-21 | Registrazione incassi al banco senza conto | Un incasso rapido si registra in 2 tap |
-| T-22 | Chiusura **di turno**, e la giornata come somma dei turni — *la parte "cosa è stato scontrinato" è già fatta* | Chi chiude scrive **un solo numero**, quanto c'è nel cassetto: differenza, da ritirare e fondo da lasciare li calcola l'app |
+| T-22 | ✅ Chiusura **di turno**, e la giornata come somma dei turni | Fatto — chi chiude scrive **un solo numero**, quanto c'è nel cassetto |
 | T-23 | Report giornata e settimana | Incassato per metodo, credito concesso, credito rientrato |
 | T-24 | Esportazione CSV | Il file si apre in Excel con gli importi in euro, virgola decimale, e le date leggibili |
 | T-25 | Classifica clienti — consumato e pagato, mese corrente e sempre | La somma della classifica del mese coincide con il totale battuto nel mese |
