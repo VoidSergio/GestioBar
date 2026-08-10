@@ -203,6 +203,40 @@ c'era nel cassetto — se si riscrive dopo, non dichiara più niente.
 
 ---
 
+## 8 agosto 2026 — il divieto di modifica era troppo largo, e ha bloccato una correzione vera
+
+**Cosa si è visto.** Il titolare ha segnato come scontrinato un conto che non lo era, e i conti
+degli scontrini non tornavano più. Correggerlo era impossibile: il trigger scritto la mattina
+stessa (voce qui sopra) vietava **ogni** `update` su `pagamenti`.
+
+**Perché.** La regola di 0015 era giusta e il confine no. DEC-03 parla di **movimenti**: quanto,
+a chi, quando, con che metodo. `scontrino_battuto` non è il movimento — è un'annotazione su un
+gesto fiscale fatto o non fatto, e le annotazioni si sbagliano. Il divieto è stato scritto
+guardando la colonna `importo_cent`, che è quella che fa paura, e applicato a tutta la riga.
+
+Con il divieto totale l'unico rimedio sarebbe stato stornare il pagamento e rifarlo: **due
+movimenti finti nell'estratto conto di un cliente per sistemare un booleano**. Cioè sporcare
+proprio il documento che DEC-03 esiste per tenere pulito.
+
+**Cosa si è fatto.** `0017_correzione_scontrino.sql`. Il trigger confronta vecchio e nuovo campo
+per campo: passa solo `scontrino_battuto`, tutto il resto solleva eccezione. Due colonne nuove
+registrano chi ha corretto e quando, così una correzione non è mai silenziosa. Su richiesta del
+titolare, la modifica è ristretta al ruolo `titolare` con una policy — e il controllo è ripetuto
+nel trigger, perché RLS che vieta non dà errore ma zero righe toccate, e l'app direbbe "fatto"
+senza aver fatto niente.
+
+**La regola.** Prima di vietare, chiedersi *che cosa esattamente* si sta proteggendo. "I
+movimenti sono immutabili" non vuol dire "le righe di quelle tabelle sono immutabili": una riga
+contiene il fatto e le annotazioni sul fatto, e solo il primo è di pietra. Un divieto troppo
+largo non si vede subito — si vede il giorno in cui impedisce una cosa giusta, e a quel punto la
+tentazione è aggirarlo con qualcosa di peggio.
+
+**Nota di metodo.** Fra lo sbaglio e la correzione sono passate meno di sei ore, e questo è il
+caso migliore. Se il divieto fosse arrivato durante la settimana di collaudo, la voce sarebbe
+stata "l'app non mi lascia correggere" in una casella *lento* con cinque stanghette.
+
+---
+
 ## 8 agosto 2026 — la registrazione era aperta a chiunque, da sempre
 
 **Cosa si è visto.** Nella dashboard Supabase, **Authentication → Sign In / Providers → User

@@ -136,9 +136,32 @@ await db.exec(`insert into righe_conto (conto_id, descrizione, prezzo_unitario_c
 await db.exec(`insert into pagamenti (cliente_id, importo_cent, metodo, op_id)
   values ('${cliente.id}', 120, 'contanti', gen_random_uuid())`);
 
-await deveFallire('un pagamento non si modifica', 'update pagamenti set importo_cent = 1', 'non si modifica');
+await deveFallire('l\u2019importo di un pagamento non si tocca', 'update pagamenti set importo_cent = 1', 'non si modifica');
+await deveFallire('nemmeno il metodo', "update pagamenti set metodo = 'carta'", 'non si modifica');
 await deveFallire('una riga non si modifica', 'update righe_conto set prezzo_unitario_cent = 1', 'non si modifica');
 await deveFallire('un pagamento non si cancella', 'delete from pagamenti', 'non si cancellano');
+
+console.log('\nLA SPUNTA DELLO SCONTRINO: SOLO IL TITOLARE (0017)');
+// Il trigger crea_profilo_utente ha gia' fatto 'titolare' il primo utente.
+await deveFallire(
+  'un barista non la tocca',
+  "update profili set ruolo = 'barista' where id = '" + utente.id + "'; update pagamenti set scontrino_battuto = true",
+  'Solo il titolare'
+);
+await db.exec(`update profili set ruolo = 'titolare' where id = '${utente.id}'`);
+await db.exec('update pagamenti set scontrino_battuto = true');
+eq('la spunta cambia', true, (await uno('select scontrino_battuto s from pagamenti limit 1')).s);
+eq(
+  'e lascia detto chi e quando',
+  true,
+  (await uno('select scontrino_corretto_il is not null and scontrino_corretto_da is not null t from pagamenti limit 1')).t
+);
+await db.exec('update pagamenti set scontrino_corretto_il = null, scontrino_corretto_da = null, scontrino_battuto = true');
+eq(
+  'un update che non cambia la spunta non segna niente',
+  null,
+  (await uno('select scontrino_corretto_il i from pagamenti limit 1')).i
+);
 
 console.log('\nCHIUSURA DI TURNO — l\'esempio di 02-MODELLO-DATI §4.2');
 eq(

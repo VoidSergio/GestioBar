@@ -268,6 +268,26 @@ export async function inviaOperazione(opId: string, op: Operazione): Promise<Esi
         return esito(error);
       }
 
+      case 'correggi_scontrino': {
+        // RLS che vieta non solleva un errore: restituisce zero righe toccate.
+        // Senza `count` l'app direbbe "fatto" a un barista che non ha il
+        // permesso — è la trappola scritta in CLAUDE.md, già costata una
+        // cancellazione fantasma sui clienti.
+        const { error, count } = await sb
+          .from('pagamenti')
+          .update({ scontrino_battuto: op.dati.battuto }, { count: 'exact' })
+          .eq('id', op.dati.pagamentoId);
+
+        if (!error && count === 0) {
+          return {
+            ok: false,
+            codice: 'permesso_negato',
+            messaggio: 'Solo il titolare può correggere la spunta dello scontrino.',
+          };
+        }
+        return esito(error);
+      }
+
       case 'chiudi_turno': {
         // Gli importi arrivano già calcolati dal dispositivo: sono la
         // fotografia di quello che chi ha contato aveva davanti. Le tre

@@ -145,6 +145,22 @@ export type Operazione =
         /** deve coincidere con auth.uid(): lo pretende la policy di inserimento */
         chiusoDa: string;
       };
+    }
+  | {
+      /**
+       * Corregge la spunta dello scontrino su un pagamento già registrato.
+       *
+       * È l'unica modifica ammessa su un movimento, e non contraddice DEC-03:
+       * quanto, a chi e con che metodo restano di pietra. Se sia stato battuto
+       * uno scontrino è un'annotazione su un gesto fiscale, non il movimento —
+       * e sbagliarla capita. Il rimedio alternativo sarebbe stornare il
+       * pagamento e rifarlo: due movimenti finti nell'estratto conto di un
+       * cliente per sistemare un booleano.
+       *
+       * Il database la lascia passare solo al titolare (0017).
+       */
+      tipo: 'correggi_scontrino';
+      dati: { pagamentoId: string; battuto: boolean };
     };
 
 export type StatoVoce = 'in_attesa' | 'in_invio' | 'fallita';
@@ -182,6 +198,7 @@ export function produce(op: Operazione): string | null {
     case 'disattiva_cliente':
     case 'elimina_cliente':
     case 'sposta_riga':
+    case 'correggi_scontrino':
       return null;
   }
 }
@@ -220,6 +237,10 @@ export function richiede(op: Operazione): string[] {
     case 'sposta_riga':
       // Servono la riga da cui si toglie e la persona a cui si addebita.
       return [op.dati.rigaOrigineId, op.dati.clienteDestinazioneId];
+    case 'correggi_scontrino':
+      // Il pagamento deve esistere sul server: se è stato registrato offline
+      // e corretto subito dopo, la correzione aspetta il suo turno.
+      return [op.dati.pagamentoId];
     case 'chiudi_turno':
       // Niente: gli importi viaggiano dentro l'operazione, non si leggono dal
       // server. Una chiusura ferma dietro un conto che non parte sarebbe la
@@ -395,5 +416,7 @@ export function descriviOperazione(op: Operazione): string {
       return `Cancellazione di ${op.dati.nome}`;
     case 'chiudi_turno':
       return 'Chiusura di un turno di cassa';
+    case 'correggi_scontrino':
+      return op.dati.battuto ? 'Scontrino segnato come battuto' : 'Scontrino segnato come non battuto';
   }
 }

@@ -15,6 +15,7 @@ import {
 } from '@/lib/dominio/scontrini';
 import { useScontrini } from '@/lib/hooks/use-scontrini';
 import { IndicatoreSync } from '@/components/shell/indicatore-sync';
+import { useCorreggiScontrino } from '@/lib/hooks/use-correggi-scontrino';
 import { BarraNavigazione } from '@/components/shell/barra-navigazione';
 import { AvvisoLettura } from '@/components/shell/avviso-lettura';
 import type { MovimentoScontrino } from '@/lib/supabase/tipi';
@@ -45,7 +46,7 @@ const NOMI_METODO: Record<string, string> = {
   altro: 'Altro',
 };
 
-export function ElencoScontrini() {
+export function ElencoScontrini({ puoCorreggere = false }: { puoCorreggere?: boolean }) {
   const [giorno, setGiorno] = useState(() => {
     const oggi = new Date();
     oggi.setHours(0, 0, 0, 0);
@@ -200,7 +201,7 @@ export function ElencoScontrini() {
         ) : (
           <ul className="mt-4 divide-y divide-[var(--color-bordo)] border-y border-[var(--color-bordo)]">
             {visibili.map((m) => (
-              <RigaScontrino key={m.movimento_id} movimento={m} />
+              <RigaScontrino key={m.movimento_id} movimento={m} puoCorreggere={puoCorreggere} />
             ))}
           </ul>
         )}
@@ -215,8 +216,20 @@ export function ElencoScontrini() {
 
 const ORA = new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-function RigaScontrino({ movimento }: { movimento: MovimentoScontrino }) {
+function RigaScontrino({
+  movimento,
+  puoCorreggere,
+}: {
+  movimento: MovimentoScontrino;
+  puoCorreggere: boolean;
+}) {
   const aCredito = movimento.tipo === 'a_credito';
+  const correggi = useCorreggiScontrino();
+
+  // Un movimento a credito non ha uno scontrino da battere: non c'è niente
+  // da correggere, e offrire il pulsante inviterebbe a cercare una ricevuta
+  // che non deve esistere.
+  const correggibile = puoCorreggere && !aCredito;
 
   return (
     <li className="flex items-center gap-3 px-5 py-3">
@@ -240,6 +253,30 @@ function RigaScontrino({ movimento }: { movimento: MovimentoScontrino }) {
       >
         {formatEuro(movimento.importo_cent)}
       </span>
+
+      {correggibile && (
+        <button
+          onClick={() =>
+            void correggi.mutateAsync({
+              pagamentoId: movimento.movimento_id,
+              battuto: !movimento.scontrino_battuto,
+            })
+          }
+          aria-label={
+            movimento.scontrino_battuto
+              ? 'Segna come non scontrinato'
+              : 'Segna come scontrinato'
+          }
+          aria-pressed={movimento.scontrino_battuto}
+          className={`size-14 shrink-0 rounded-xl border text-xl ${
+            movimento.scontrino_battuto
+              ? 'border-[var(--color-bordo)] text-[var(--color-positivo)]'
+              : 'border-[var(--color-attenzione)] text-[var(--color-testo-tenue)]'
+          }`}
+        >
+          {movimento.scontrino_battuto ? '🧾' : '—'}
+        </button>
+      )}
     </li>
   );
 }
