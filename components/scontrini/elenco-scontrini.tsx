@@ -11,6 +11,7 @@ import {
   giornoSpostato,
   perMetodo,
   riassumiScontrini,
+  serveConfermaCorrezione,
   type GruppoScontrini,
 } from '@/lib/dominio/scontrini';
 import { useScontrini } from '@/lib/hooks/use-scontrini';
@@ -225,57 +226,100 @@ function RigaScontrino({
 }) {
   const aCredito = movimento.tipo === 'a_credito';
   const correggi = useCorreggiScontrino();
+  const [chiedeConferma, setChiedeConferma] = useState(false);
 
   // Un movimento a credito non ha uno scontrino da battere: non c'è niente
   // da correggere, e offrire il pulsante inviterebbe a cercare una ricevuta
   // che non deve esistere.
   const correggibile = puoCorreggere && !aCredito;
 
+  function tocca() {
+    if (serveConfermaCorrezione(movimento.scontrino_battuto)) {
+      setChiedeConferma(true);
+      return;
+    }
+    void correggi.mutateAsync({ pagamentoId: movimento.movimento_id, battuto: true });
+  }
+
   return (
-    <li className="flex items-center gap-3 px-5 py-3">
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium">{chiHaPagato(movimento)}</span>
-        <span className="block text-xs text-[var(--color-testo-tenue)]">
-          {ORA.format(new Date(movimento.data))}
-          {movimento.conto_numero !== null && ` · conto n. ${movimento.conto_numero}`}
-          {movimento.metodo && ` · ${NOMI_METODO[movimento.metodo] ?? movimento.metodo}`}
+    <li className="px-5 py-3">
+      <div className="flex items-center gap-3">
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium">{chiHaPagato(movimento)}</span>
+          <span className="block text-xs text-[var(--color-testo-tenue)]">
+            {ORA.format(new Date(movimento.data))}
+            {movimento.conto_numero !== null && ` · conto n. ${movimento.conto_numero}`}
+            {movimento.metodo && ` · ${NOMI_METODO[movimento.metodo] ?? movimento.metodo}`}
+          </span>
         </span>
-      </span>
 
-      <span
-        className={`shrink-0 text-lg font-bold tabular-nums ${
-          aCredito
-            ? 'text-[var(--color-debito)]'
-            : movimento.scontrino_battuto
-              ? ''
-              : 'text-[var(--color-attenzione)]'
-        }`}
-      >
-        {formatEuro(movimento.importo_cent)}
-      </span>
-
-      {correggibile && (
-        <button
-          onClick={() =>
-            void correggi.mutateAsync({
-              pagamentoId: movimento.movimento_id,
-              battuto: !movimento.scontrino_battuto,
-            })
-          }
-          aria-label={
-            movimento.scontrino_battuto
-              ? 'Segna come non scontrinato'
-              : 'Segna come scontrinato'
-          }
-          aria-pressed={movimento.scontrino_battuto}
-          className={`size-14 shrink-0 rounded-xl border text-xl ${
-            movimento.scontrino_battuto
-              ? 'border-[var(--color-bordo)] text-[var(--color-positivo)]'
-              : 'border-[var(--color-attenzione)] text-[var(--color-testo-tenue)]'
+        <span
+          className={`shrink-0 text-lg font-bold tabular-nums ${
+            aCredito
+              ? 'text-[var(--color-debito)]'
+              : movimento.scontrino_battuto
+                ? ''
+                : 'text-[var(--color-attenzione)]'
           }`}
         >
-          {movimento.scontrino_battuto ? '🧾' : '—'}
-        </button>
+          {formatEuro(movimento.importo_cent)}
+        </span>
+
+        {correggibile && (
+          <button
+            onClick={tocca}
+            aria-label={
+              movimento.scontrino_battuto
+                ? 'Segna come non scontrinato'
+                : 'Segna come scontrinato'
+            }
+            aria-pressed={movimento.scontrino_battuto}
+            className={`size-14 shrink-0 rounded-xl border text-xl ${
+              movimento.scontrino_battuto
+                ? 'border-[var(--color-bordo)] text-[var(--color-positivo)]'
+                : 'border-[var(--color-attenzione)] text-[var(--color-testo-tenue)]'
+            }`}
+          >
+            {movimento.scontrino_battuto ? '\u{1F9FE}' : '\u2014'}
+          </button>
+        )}
+      </div>
+
+      {/* Solo per togliere la spunta: dichiarare non emesso qualcosa che è
+          passato dal registratore è l'unica direzione che fa danno. */}
+      {chiedeConferma && (
+        <div className="mt-3 rounded-xl border border-[var(--color-attenzione)] p-4">
+          <p className="text-sm">
+            Questo incasso di{' '}
+            <strong className="tabular-nums">{formatEuro(movimento.importo_cent)}</strong> risulta
+            scontrinato. Vuoi segnarlo come <strong>non</strong> scontrinato?
+          </p>
+          <p className="mt-2 text-xs text-[var(--color-testo-tenue)]">
+            Se lo scontrino è stato battuto davvero, lascialo com&apos;è: qui si scrive che cosa è
+            passato dal registratore, non che cosa vorremmo.
+          </p>
+
+          <div className="mt-4 flex gap-3">
+            <button
+              onClick={() => setChiedeConferma(false)}
+              className="min-h-14 flex-1 rounded-xl border border-[var(--color-bordo)] text-base font-medium"
+            >
+              Lascia com&apos;è
+            </button>
+            <button
+              onClick={() => {
+                setChiedeConferma(false);
+                void correggi.mutateAsync({
+                  pagamentoId: movimento.movimento_id,
+                  battuto: false,
+                });
+              }}
+              className="min-h-14 flex-1 rounded-xl bg-[var(--color-attenzione)] text-base font-semibold text-[var(--color-sfondo)]"
+            >
+              Togli la spunta
+            </button>
+          </div>
+        </div>
       )}
     </li>
   );

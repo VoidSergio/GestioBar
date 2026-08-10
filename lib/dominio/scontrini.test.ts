@@ -8,6 +8,7 @@ import {
   intervalloGiornata,
   perMetodo,
   riassumiScontrini,
+  serveConfermaCorrezione,
 } from './scontrini';
 import type { MovimentoScontrino } from '@/lib/supabase/tipi';
 
@@ -162,5 +163,17 @@ describe('chiHaPagato', () => {
 
   it('col soprannome lo mostra fra parentesi', () => {
     expect(chiHaPagato(credito(120, { cliente_soprannome: 'Ciccio' }))).toBe('Franco (Ciccio)');
+  });
+});
+
+describe('serveConfermaCorrezione', () => {
+  it('chiede conferma per togliere la spunta a uno scontrino battuto', () => {
+    expect(serveConfermaCorrezione(true)).toBe(true);
+  });
+
+  it('non la chiede per segnarne uno come battuto', () => {
+    // Correggere una dimenticanza è frequente e reversibile: una conferma qui
+    // insegnerebbe a premere "sì" senza leggere anche quando conta.
+    expect(serveConfermaCorrezione(false)).toBe(false);
   });
 });

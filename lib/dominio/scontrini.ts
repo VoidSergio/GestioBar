@@ -144,3 +144,24 @@ export function chiHaPagato(m: MovimentoScontrino): string {
   if (!m.cliente_nome) return 'Banco';
   return m.cliente_soprannome ? `${m.cliente_nome} (${m.cliente_soprannome})` : m.cliente_nome;
 }
+
+/* ------------------------------------------------- correzione della spunta */
+
+/**
+ * Se togliere o mettere la spunta debba passare da una conferma.
+ *
+ * Solo in una direzione: **togliere** la spunta a uno scontrino battuto
+ * davvero. Quel gesto dichiara non emesso qualcosa che è passato dal
+ * registratore di cassa, e in un controllo la differenza la spiega una
+ * persona, non l'app.
+ *
+ * Nell'altra direzione no. Segnare come battuto qualcosa che risultava non
+ * battuto è quasi sempre la correzione di una dimenticanza, capita spesso, e
+ * `04-UX-MOBILE.md` §1 vieta le conferme sulle azioni reversibili — la fila e
+ * le mani bagnate valgono anche qui. Chiedere conferma in entrambi i versi
+ * insegnerebbe solo a premere "sì" senza leggere, che è il modo migliore per
+ * rendere inutile anche la conferma che serve.
+ */
+export function serveConfermaCorrezione(battutoAdesso: boolean): boolean {
+  return battutoAdesso;
+}
