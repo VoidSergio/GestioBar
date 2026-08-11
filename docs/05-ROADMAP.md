@@ -433,7 +433,13 @@ Fatto quando:
 - [x] Su iPhone "Aggiungi a schermata Home" produce un'app a schermo intero senza barra del browser — provato
 - [x] L'icona è visibile e nitida su entrambi — provato
 - [x] Aprendo l'app senza rete si vedono i dati in cache, non una schermata di errore — la pagina `/offline` copre il caso della schermata mai aperta
-- [ ] Lighthouse mobile: PWA installabile, prestazioni ≥ 90 — **da lanciare sul sito pubblicato**
+- [ ] Lighthouse mobile: prestazioni ≥ 90 — **da lanciare sul sito pubblicato**
+
+**Il criterio è cambiato perché lo strumento è cambiato.** Diceva "PWA installabile, prestazioni
+≥ 90", ma **Lighthouse ha tolto del tutto la categoria PWA nella versione 12** (maggio 2024): non
+esiste più un punteggio da leggere. Che l'app si installi lo abbiamo verificato nel modo che
+conta di più — provandolo su iPhone, Android e iPad. Di Lighthouse resta il numero delle
+prestazioni, che è quello che dice se l'app è più lenta del foglio.
 
 **Provata l'8 agosto su iPhone, Android e iPad**: si installa e si apre a schermo intero su tutti
 e tre. Resta solo Lighthouse, che non si lancia dal telefono.
