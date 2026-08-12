@@ -1,14 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   aggiungi,
+  assegnaCliente,
+  bozzaAlBanco,
   diminuisci,
   nuovaBozza,
   ordinaBozze,
   togliVoce,
   totaleBozza,
+  unisci,
   type Bozza,
   type ProdottoScelto,
 } from '@/lib/dominio/bozza';
@@ -81,6 +84,63 @@ export function useBozza(id: string) {
     aggiungiProdotto: (scelto: ProdottoScelto) => applica((b) => aggiungi(b, scelto)),
     diminuisciVoce: (idVoce: string) => applica((b) => diminuisci(b, idVoce)),
     togliVoce: (idVoce: string) => applica((b) => togliVoce(b, idVoce)),
+  };
+}
+
+/**
+ * Il conto al banco che la schermata di apertura tiene sempre pronto.
+ *
+ * Se non ce n'è uno, lo crea. È l'unica creazione automatica dell'app, ed è
+ * quello che permette di battere un caffè al primo tocco dopo aver aperto:
+ * non c'è nessuna domanda prima della griglia.
+ *
+ * Una bozza vuota non costa niente — non tocca il database, non compare fra
+ * i conti aperti (`contiInAttesa` la scarta) e alla conferma diventa un conto
+ * solo se ci hai battuto dentro qualcosa.
+ */
+export function useBanco(): { id: string | null; caricato: boolean } {
+  const { bozze, caricato } = useBozze();
+  const banco = bozzaAlBanco(bozze);
+  // Senza questo, il doppio giro degli effetti in sviluppo aprirebbe due
+  // banchi invece di uno.
+  const staCreando = useRef(false);
+
+  useEffect(() => {
+    if (!caricato || banco || staCreando.current) return;
+    staCreando.current = true;
+    void salvaBozza(nuovaBozza(nuovoId(), null, 'Banco')).finally(() => {
+      staCreando.current = false;
+    });
+  }, [caricato, banco]);
+
+  return { id: banco?.id ?? null, caricato };
+}
+
+/**
+ * Dà un nome a un conto che stava andando al banco.
+ *
+ * Se quel cliente ha già un conto aperto, le voci ci finiscono dentro invece
+ * di aprirgliene un secondo (04-UX-MOBILE.md §4). Restituisce l'id del conto
+ * su cui si continua: non è detto che sia quello di partenza.
+ */
+export function useAssegnaCliente() {
+  return async function assegna(
+    bozza: Bozza,
+    clienteId: string | null,
+    etichetta: string,
+  ): Promise<string> {
+    if (clienteId) {
+      const esistente = await bozzaDelCliente(clienteId);
+      if (esistente && esistente.id !== bozza.id) {
+        await salvaBozza(unisci(esistente, bozza));
+        await eliminaBozza(bozza.id);
+        return esistente.id;
+      }
+    }
+
+    const aggiornata = assegnaCliente(bozza, clienteId, etichetta);
+    await salvaBozza(aggiornata);
+    return aggiornata.id;
   };
 }
 

@@ -31,7 +31,7 @@ export default function PaginaOffline() {
         href="/"
         className="mt-4 flex h-14 items-center rounded-xl bg-[var(--color-accento)] px-8 font-semibold text-[var(--color-sfondo)]"
       >
-        Torna ai conti
+        Torna al banco
       </a>
     </main>
   );

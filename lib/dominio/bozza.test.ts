@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   aggiungi,
+  assegnaCliente,
+  bozzaAlBanco,
+  contiInAttesa,
+  unisci,
   diminuisci,
   eVuota,
   nuovaBozza,
@@ -167,5 +171,117 @@ describe('ordinaBozze', () => {
     const elenco = [nuovaBozza('c1', null, 'Banco', ORA), nuovaBozza('c2', null, 'x', ORA + 1)];
     ordinaBozze(elenco);
     expect(elenco[0]!.id).toBe('c1');
+  });
+});
+
+describe('assegnaCliente', () => {
+  it('mette il nome su un conto che stava andando al banco', () => {
+    const banco = aggiungi(nuovaBozza('c1', null, 'Banco', ORA), CAFFE, ORA);
+    const intestato = assegnaCliente(banco, 'cli-1', 'Mario Rossi', ORA + 1000);
+
+    expect(intestato.clienteId).toBe('cli-1');
+    expect(intestato.etichetta).toBe('Mario Rossi');
+    // Le voci non le tocca: si cambia l'intestazione, non l'ordinazione
+    expect(intestato.voci).toEqual(banco.voci);
+    expect(totaleBozza(intestato)).toBe(120);
+  });
+
+  it('non modifica la bozza di partenza', () => {
+    const banco = aggiungi(nuovaBozza('c1', null, 'Banco', ORA), CAFFE, ORA);
+    assegnaCliente(banco, 'cli-1', 'Mario', ORA + 1000);
+    expect(banco.clienteId).toBeNull();
+    expect(banco.etichetta).toBe('Banco');
+  });
+});
+
+describe('unisci', () => {
+  it('somma le voci uguali invece di duplicarle', () => {
+    const suo = aggiungi(nuovaBozza('c1', 'cli-1', 'Mario', ORA), CAFFE, ORA);
+    const banco = aggiungi(nuovaBozza('c2', null, 'Banco', ORA + 5000), CAFFE, ORA + 5000);
+
+    const unito = unisci(suo, banco, ORA + 6000);
+
+    expect(unito.voci).toHaveLength(1);
+    expect(unito.voci[0]!.quantita).toBe(2);
+    expect(totaleBozza(unito)).toBe(240);
+  });
+
+  it('fra due orari tiene il più vecchio: l ordinazione è cominciata lì', () => {
+    const suo = aggiungi(nuovaBozza('c1', 'cli-1', 'Mario', ORA), CAFFE, ORA);
+    const banco = aggiungi(nuovaBozza('c2', null, 'Banco', ORA + 5000), CAFFE, ORA + 5000);
+
+    expect(unisci(suo, banco).voci[0]!.battutaIl).toBe(ORA);
+    expect(unisci(banco, suo).voci[0]!.battutaIl).toBe(ORA);
+  });
+
+  it('le voci diverse restano separate e non si perde niente', () => {
+    const suo = aggiungi(nuovaBozza('c1', 'cli-1', 'Mario', ORA), CAFFE, ORA);
+    const banco = aggiungi(nuovaBozza('c2', null, 'Banco', ORA), ICHNUSA, ORA);
+
+    const unito = unisci(suo, banco);
+
+    expect(unito.voci).toHaveLength(2);
+    expect(totaleBozza(unito)).toBe(120 + 170);
+    // resta il conto del cliente: id, intestazione e apertura sono i suoi
+    expect(unito.id).toBe('c1');
+    expect(unito.clienteId).toBe('cli-1');
+  });
+
+  it('unire un conto vuoto non cambia niente', () => {
+    const suo = aggiungi(nuovaBozza('c1', 'cli-1', 'Mario', ORA), CAFFE, ORA);
+    const vuoto = nuovaBozza('c2', null, 'Banco', ORA);
+    expect(unisci(suo, vuoto).voci).toEqual(suo.voci);
+  });
+});
+
+describe('bozzaAlBanco', () => {
+  it('trova il conto senza cliente', () => {
+    const banco = nuovaBozza('c1', null, 'Banco', ORA);
+    const mario = nuovaBozza('c2', 'cli-1', 'Mario', ORA + 1000);
+    expect(bozzaAlBanco([mario, banco])?.id).toBe('c1');
+  });
+
+  it('se ce ne sono due vale il più recente: è quello su cui si stava lavorando', () => {
+    const vecchio = nuovaBozza('c1', null, 'Banco', ORA);
+    const nuovo = nuovaBozza('c2', null, 'Banco', ORA + 1000);
+    expect(bozzaAlBanco([vecchio, nuovo])?.id).toBe('c2');
+  });
+
+  it('senza conti al banco restituisce null', () => {
+    expect(bozzaAlBanco([])).toBeNull();
+    expect(bozzaAlBanco([nuovaBozza('c1', 'cli-1', 'Mario', ORA)])).toBeNull();
+  });
+});
+
+describe('contiInAttesa', () => {
+  it('esclude quello in composizione', () => {
+    const banco = nuovaBozza('c1', null, 'Banco', ORA);
+    const mario = nuovaBozza('c2', 'cli-1', 'Mario', ORA + 1000);
+    expect(contiInAttesa([banco, mario], 'c1').map((b) => b.id)).toEqual(['c2']);
+  });
+
+  it('un banco vuoto non è un conto aperto', () => {
+    const banco = nuovaBozza('c1', null, 'Banco', ORA);
+    const altroBanco = nuovaBozza('c2', null, 'Banco', ORA + 1000);
+    expect(contiInAttesa([banco, altroBanco], 'c2')).toEqual([]);
+  });
+
+  it('un banco con qualcosa dentro invece sì: quei soldi sono sul bancone', () => {
+    const banco = nuovaBozza('c1', null, 'Banco', ORA);
+    const altroBanco = aggiungi(nuovaBozza('c2', null, 'Banco', ORA + 1000), CAFFE, ORA + 1000);
+    expect(contiInAttesa([banco, altroBanco], 'c1').map((b) => b.id)).toEqual(['c2']);
+  });
+
+  it('un conto intestato resta anche se è vuoto: qualcuno lo ha aperto apposta', () => {
+    const banco = nuovaBozza('c1', null, 'Banco', ORA);
+    const mario = nuovaBozza('c2', 'cli-1', 'Mario', ORA + 1000);
+    expect(contiInAttesa([banco, mario], 'c1').map((b) => b.id)).toEqual(['c2']);
+  });
+
+  it('sono in ordine, dal più recente', () => {
+    const banco = nuovaBozza('c0', null, 'Banco', ORA);
+    const a = nuovaBozza('c1', 'cli-1', 'Anna', ORA + 1000);
+    const b = nuovaBozza('c2', 'cli-2', 'Bruno', ORA + 2000);
+    expect(contiInAttesa([a, banco, b], 'c0').map((x) => x.id)).toEqual(['c2', 'c1']);
   });
 });

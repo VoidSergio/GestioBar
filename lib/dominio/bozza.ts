@@ -129,6 +129,89 @@ export function togliVoce(bozza: Bozza, idVoce: string, adesso = Date.now()): Bo
   return { ...bozza, voci: bozza.voci.filter((v) => v.id !== idVoce), aggiornataIl: adesso };
 }
 
+/**
+ * Attacca un cliente a un conto che stava andando al banco.
+ *
+ * SERVE PERCHÉ L'ORDINE DELLE DOMANDE È CAMBIATO.
+ *
+ * Prima si chiedeva "a chi?" e poi si batteva. Adesso si batte subito e il
+ * nome si chiede alla fine, quando serve davvero — cioè quando il conto va a
+ * credito, o quando si vuole che resti nella storia di qualcuno. Nel 90% dei
+ * casi (uno che paga e se ne va) non si chiede affatto.
+ *
+ * Si può fare senza violare niente proprio perché la bozza non è ancora un
+ * conto (DEC-08): finché non si conferma, non c'è nessuna riga registrata a
+ * cui stare cambiando l'intestatario.
+ */
+export function assegnaCliente(
+  bozza: Bozza,
+  clienteId: string | null,
+  etichetta: string,
+  adesso = Date.now(),
+): Bozza {
+  return { ...bozza, clienteId, etichetta, aggiornataIl: adesso };
+}
+
+/**
+ * Versa le voci di una bozza dentro un'altra.
+ *
+ * Capita quando si batte al banco e poi si scopre che è di Mario, che però
+ * ha già un conto aperto da mezz'ora. Aprirgliene un secondo sarebbe un
+ * errore che si paga alla chiusura; buttare via quello che si è battuto,
+ * peggio. Le voci si sommano su quella che c'era già, che è la stessa cosa
+ * che sarebbe successa battendole lì fin dall'inizio.
+ *
+ * L'ora di ogni voce resta la sua: `battutaIl` è quando è stata ordinata, e
+ * non cambia perché la si è spostata di conto.
+ */
+export function unisci(destinazione: Bozza, origine: Bozza, adesso = Date.now()): Bozza {
+  let risultato = destinazione;
+
+  for (const voce of origine.voci) {
+    const indice = risultato.voci.findIndex((v) => stessaVoce(v, voce));
+
+    if (indice >= 0) {
+      const voci = [...risultato.voci];
+      const esistente = voci[indice]!;
+      voci[indice] = {
+        ...esistente,
+        quantita: esistente.quantita + voce.quantita,
+        // Fra due orari si tiene il più vecchio: l'ordinazione è cominciata lì.
+        battutaIl: Math.min(esistente.battutaIl, voce.battutaIl),
+      };
+      risultato = { ...risultato, voci };
+    } else {
+      risultato = { ...risultato, voci: [voce, ...risultato.voci] };
+    }
+  }
+
+  return { ...risultato, aggiornataIl: adesso };
+}
+
+/**
+ * Il conto al banco: quello che la schermata di apertura tiene sempre pronto.
+ *
+ * È una bozza senza cliente. Se ce n'è più d'una — può succedere aprendone
+ * una dal `+` e lasciandola lì — vale la più recente, che è quella su cui si
+ * stava lavorando.
+ */
+export function bozzaAlBanco(bozze: readonly Bozza[]): Bozza | null {
+  return ordinaBozze(bozze).find((b) => b.clienteId === null) ?? null;
+}
+
+/**
+ * I conti da mostrare nella striscia in cima alla schermata di apertura.
+ *
+ * Fuori quello in composizione, che è già tutto lo schermo, e fuori i conti
+ * vuoti senza cliente: un banco a zero non è un conto aperto, è solo il
+ * posto dove si comincia a battere.
+ */
+export function contiInAttesa(bozze: readonly Bozza[], idCorrente: string | null): Bozza[] {
+  return ordinaBozze(bozze).filter(
+    (b) => b.id !== idCorrente && !(b.clienteId === null && eVuota(b)),
+  );
+}
+
 export function totaleBozza(bozza: Bozza): number {
   return bozza.voci.reduce((somma, v) => somma + v.quantita * v.prezzoUnitarioCent, 0);
 }

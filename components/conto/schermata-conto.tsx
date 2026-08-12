@@ -1,16 +1,50 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { GrigliaProdotti } from './griglia-prodotti';
 import { RigheConto } from './righe-conto';
 import { PannelloPagamento } from './pannello-pagamento';
 import { IndicatoreSync } from '@/components/shell/indicatore-sync';
+import { BarraNavigazione } from '@/components/shell/barra-navigazione';
+import { RicercaCliente } from '@/components/clienti/ricerca-cliente';
 import { descriviSaldo, formatEuro, statoSaldo } from '@/lib/dominio/denaro';
-import { eVuota, totaleBozza } from '@/lib/dominio/bozza';
-import { useAnnullaBozza, useBozza, useConfermaConto } from '@/lib/hooks/use-bozze';
+import { contiInAttesa, eVuota, totaleBozza } from '@/lib/dominio/bozza';
+import {
+  useAnnullaBozza,
+  useApriConto,
+  useAssegnaCliente,
+  useBozza,
+  useBozze,
+  useConfermaConto,
+} from '@/lib/hooks/use-bozze';
 import { useClienti } from '@/lib/hooks/use-clienti';
 import { nuovoId } from '@/lib/utils';
+
+/**
+ * Il conto in composizione.
+ *
+ * Si usa in due posti, ed è la stessa schermata perché è la stessa cosa:
+ *
+ *  - come **schermata di apertura** (`eHome`), sul conto al banco che l'app
+ *    tiene sempre pronto. Aperta l'app, la griglia è già lì: si batte al
+ *    primo tocco, senza passare da nessuna domanda;
+ *  - come **dettaglio di un conto** aperto a nome di qualcuno, raggiunto
+ *    dalla striscia in cima o dalla scheda cliente.
+ *
+ * PERCHÉ IL NOME SI CHIEDE ALLA FINE.
+ *
+ * Prima l'ordine era: chi è → cosa prende. Ma nel bar l'ordinazione arriva
+ * prima del nome, e in gran parte dei casi il nome non serve mai: uno che
+ * paga e se ne va non ha bisogno di essere nessuno. Chiederlo prima voleva
+ * dire pagare due tocchi su ogni caffè per un'informazione che serve solo
+ * quando il conto va a credito.
+ *
+ * Adesso: cosa prende → e solo se resta a debito, chi è. La bozza è locale
+ * fino alla conferma (DEC-08), quindi cambiarle intestatario a metà strada
+ * non tocca nessun dato registrato.
+ */
 
 /** Quanto resta a schermo il riepilogo dopo la conferma (04-UX-MOBILE §6). */
 const DURATA_RIEPILOGO_MS = 2000;
@@ -22,22 +56,37 @@ interface Riepilogo {
   haCliente: boolean;
 }
 
-export function SchermataConto({ id }: { id: string }) {
+/** Perché stiamo chiedendo "a chi?". Cambia solo cosa si fa con la risposta. */
+type MotivoRicerca = 'assegna' | 'nuovo' | 'a_credito';
+
+export function SchermataConto({ id, eHome = false }: { id: string; eHome?: boolean }) {
   const router = useRouter();
   const { bozza, caricata, aggiungiProdotto, diminuisciVoce } = useBozza(id);
+  const { bozze } = useBozze();
   const { data: clienti } = useClienti();
   const conferma = useConfermaConto();
   const annulla = useAnnullaBozza();
+  const apri = useApriConto();
+  const assegna = useAssegnaCliente();
   const [inCorso, setInCorso] = useState(false);
   const [pagamentoAperto, setPagamentoAperto] = useState(false);
+  const [ricerca, setRicerca] = useState<MotivoRicerca | null>(null);
   const [riepilogo, setRiepilogo] = useState<Riepilogo | null>(null);
 
-  // Il riepilogo si guarda, non si tocca: due secondi e si torna alla home.
+  /**
+   * Il riepilogo si guarda, non si tocca: due secondi e via.
+   *
+   * Dal dettaglio si torna ai conti; dalla schermata di apertura non si va da
+   * nessuna parte — il banco successivo è già pronto e la griglia riappare.
+   */
   useEffect(() => {
     if (!riepilogo) return;
-    const t = setTimeout(() => router.push('/'), DURATA_RIEPILOGO_MS);
+    const t = setTimeout(() => {
+      if (eHome) setRiepilogo(null);
+      else router.push('/');
+    }, DURATA_RIEPILOGO_MS);
     return () => clearTimeout(t);
-  }, [riepilogo, router]);
+  }, [riepilogo, router, eHome]);
 
   if (!caricata) {
     return <div className="h-dvh" aria-busy="true" />;
@@ -50,6 +99,10 @@ export function SchermataConto({ id }: { id: string }) {
   }
 
   if (!bozza) {
+    // Alla home la bozza sparisce solo per essere subito rifatta (il banco
+    // successivo): dire "questo conto non c'è più" sarebbe un errore inventato.
+    if (eHome) return <div className="h-dvh" aria-busy="true" />;
+
     return (
       <main className="mx-auto max-w-md px-6 py-16 text-center">
         <p className="font-medium">Questo conto non c&apos;è più.</p>
@@ -61,7 +114,7 @@ export function SchermataConto({ id }: { id: string }) {
           onClick={() => router.push('/')}
           className="mt-6 h-14 w-full rounded-xl bg-[var(--color-accento)] font-semibold text-[var(--color-sfondo)]"
         >
-          Torna ai conti
+          Torna al banco
         </button>
       </main>
     );
@@ -72,6 +125,7 @@ export function SchermataConto({ id }: { id: string }) {
     : undefined;
   const totale = totaleBozza(bozza);
   const vuota = eVuota(bozza);
+  const altriConti = contiInAttesa(bozze, bozza.id);
 
   const debitoPrecedenteCent = cliente?.saldo_cent ?? 0;
 
@@ -80,22 +134,56 @@ export function SchermataConto({ id }: { id: string }) {
     setInCorso(true);
     await conferma(bozza, modo);
     setPagamentoAperto(false);
-    // Non si torna subito alla home: prima il barista vede com'è finita.
+    setInCorso(false);
+    // Non si torna subito indietro: prima il barista vede com'è finita.
     setRiepilogo(esito);
   }
 
   /** A CREDITO chiude in un tap, senza conferma: è reversibile con uno storno. */
-  function aCredito() {
+  function aCredito(clienteAggiornato?: { saldoCent: number; etichetta: string }) {
     if (!bozza) return;
+    const debito = clienteAggiornato?.saldoCent ?? debitoPrecedenteCent;
     void chiudi(
       { tipo: 'a_credito' },
       {
-        etichetta: bozza.etichetta,
-        nuovoSaldoCent: debitoPrecedenteCent + totale,
+        etichetta: clienteAggiornato?.etichetta ?? bozza.etichetta,
+        nuovoSaldoCent: debito + totale,
         restoCent: 0,
         haCliente: true,
       },
     );
+  }
+
+  /**
+   * La risposta a "a chi?". Cosa se ne fa dipende da perché l'avevamo chiesto.
+   */
+  async function rispondiRicerca(clienteId: string | null, etichetta: string) {
+    const motivo = ricerca;
+    setRicerca(null);
+    if (!bozza) return;
+
+    // Un conto nuovo, a parte: quello che si sta battendo resta dov'è.
+    if (motivo === 'nuovo') {
+      router.push(`/conto/${await apri(clienteId, etichetta)}`);
+      return;
+    }
+
+    const idDopo = await assegna(bozza, clienteId, etichetta);
+
+    if (motivo === 'a_credito') {
+      // Se le voci sono confluite in un conto che il cliente aveva già
+      // aperto, il conto da chiudere è quello: ci si va e si decide lì.
+      if (idDopo !== bozza.id) {
+        router.push(`/conto/${idDopo}`);
+        return;
+      }
+      const saldo = (clienti ?? []).find((c) => c.id === clienteId)?.saldo_cent ?? 0;
+      aCredito({ saldoCent: saldo, etichetta });
+      return;
+    }
+
+    // Assegnazione e basta: si continua a battere, con il nome giusto in cima.
+    if (!eHome || idDopo !== bozza.id) router.push(`/conto/${idDopo}`);
   }
 
   async function annullaConto() {
@@ -106,43 +194,61 @@ export function SchermataConto({ id }: { id: string }) {
       return;
     }
     await annulla(bozza.id);
-    router.push('/');
+    // Alla home non si va da nessuna parte: il banco successivo lo rifà
+    // `useBanco`, e la griglia resta dov'era.
+    if (!eHome) router.push('/');
   }
 
   return (
-    <main className="flex h-dvh flex-col">
-      <header className="flex shrink-0 items-center gap-2 px-3 py-2">
-        <button
-          type="button"
-          onClick={() => router.push('/')}
-          aria-label="Torna ai conti"
-          className="flex h-11 w-11 shrink-0 items-center justify-center text-xl text-[var(--color-testo-tenue)]"
-        >
-          ←
-        </button>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h1 className="truncate text-lg font-bold">{bozza.etichetta}</h1>
-            <IndicatoreSync />
+    <div className="flex h-dvh flex-col">
+      <header className="shrink-0">
+        {eHome ? (
+          <StrisciaConti
+            corrente={bozza.etichetta}
+            altri={altriConti.map((b) => ({
+              id: b.id,
+              etichetta: b.etichetta,
+              totaleCent: totaleBozza(b),
+            }))}
+            onCambiaCliente={() => setRicerca('assegna')}
+            onNuovoConto={() => setRicerca('nuovo')}
+            onSvuota={vuota ? null : () => void annullaConto()}
+          />
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2">
+            <button
+              type="button"
+              onClick={() => router.push('/')}
+              aria-label="Torna al banco"
+              className="flex h-11 w-11 shrink-0 items-center justify-center text-xl text-[var(--color-testo-tenue)]"
+            >
+              ←
+            </button>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h1 className="truncate text-lg font-bold">{bozza.etichetta}</h1>
+                <IndicatoreSync />
+              </div>
+              {/* Il contesto che serve a decidere: quanto deve già */}
+              {cliente && statoSaldo(cliente.saldo_cent) !== 'in_pari' && (
+                <p className="text-xs text-[var(--color-debito)]">
+                  {statoSaldo(cliente.saldo_cent) === 'deve' ? 'deve già ' : ''}
+                  {descriviSaldo(cliente.saldo_cent)}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => void annullaConto()}
+              className="h-11 shrink-0 rounded-lg border border-[var(--color-bordo)] px-3 text-sm text-[var(--color-testo-tenue)]"
+            >
+              Annulla
+            </button>
           </div>
-          {/* Il contesto che serve a decidere: quanto deve già */}
-          {cliente && statoSaldo(cliente.saldo_cent) !== 'in_pari' && (
-            <p className="text-xs text-[var(--color-debito)]">
-              {statoSaldo(cliente.saldo_cent) === 'deve' ? 'deve già ' : ''}
-              {descriviSaldo(cliente.saldo_cent)}
-            </p>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => void annullaConto()}
-          className="h-11 shrink-0 rounded-lg border border-[var(--color-bordo)] px-3 text-sm text-[var(--color-testo-tenue)]"
-        >
-          Annulla
-        </button>
+        )}
       </header>
 
-      <section className="max-h-[30dvh] min-h-[80px] shrink-0 overflow-y-auto border-y border-[var(--color-bordo)]">
+      <section className="max-h-[26dvh] min-h-[72px] shrink-0 overflow-y-auto border-y border-[var(--color-bordo)]">
         <RigheConto
           voci={bozza.voci}
           onAumenta={(v) =>
@@ -172,13 +278,13 @@ export function SchermataConto({ id }: { id: string }) {
       </div>
 
       {/* Barra del totale e azioni: fissa in basso, sempre visibile */}
-      <footer className="shrink-0 border-t border-[var(--color-bordo)] bg-[var(--color-sfondo)] px-4 pb-sicura pt-3">
+      <footer className="shrink-0 border-t border-[var(--color-bordo)] bg-[var(--color-sfondo)] px-4 pt-2">
         <div className="flex items-baseline justify-between">
           <span className="text-sm text-[var(--color-testo-tenue)]">Totale conto</span>
           <span className="text-2xl font-bold tabular-nums">{formatEuro(totale)}</span>
         </div>
 
-        <div className="mt-3 flex gap-3 pb-3">
+        <div className="mt-2 flex gap-3 pb-3">
           <button
             type="button"
             disabled={vuota || inCorso}
@@ -188,19 +294,27 @@ export function SchermataConto({ id }: { id: string }) {
             INCASSA
           </button>
 
-          {/* Non compare sul banco: non c'è nessuno a cui addebitarlo */}
-          {bozza.clienteId && (
-            <button
-              type="button"
-              disabled={vuota || inCorso}
-              onClick={aCredito}
-              className="h-16 flex-1 rounded-xl border-2 border-[var(--color-debito)] text-lg font-semibold text-[var(--color-debito)] active:bg-[var(--color-debito)]/10 disabled:opacity-40"
-            >
-              A CREDITO
-            </button>
-          )}
+          {/* Senza cliente il tasto non sparisce: chiede a chi, che è la
+              domanda giusta nell'unico momento in cui serve davvero. */}
+          <button
+            type="button"
+            disabled={vuota || inCorso}
+            onClick={() => (bozza.clienteId ? aCredito() : setRicerca('a_credito'))}
+            className="h-16 flex-1 rounded-xl border-2 border-[var(--color-debito)] text-lg font-semibold text-[var(--color-debito)] active:bg-[var(--color-debito)]/10 disabled:opacity-40"
+          >
+            A CREDITO
+          </button>
         </div>
       </footer>
+
+      {eHome && <BarraNavigazione />}
+
+      {ricerca && (
+        <RicercaCliente
+          onScegli={(clienteId, etichetta) => void rispondiRicerca(clienteId, etichetta)}
+          onChiudi={() => setRicerca(null)}
+        />
+      )}
 
       {pagamentoAperto && (
         <PannelloPagamento
@@ -228,7 +342,88 @@ export function SchermataConto({ id }: { id: string }) {
           }
         />
       )}
-    </main>
+    </div>
+  );
+}
+
+/**
+ * La striscia in cima alla schermata di apertura.
+ *
+ * Ha preso il posto dell'elenco dei conti aperti, che occupava mezza home per
+ * una cosa che di solito è vuota. Qui i conti in attesa sono etichette in
+ * fila: si leggono di sfuggita, si aprono con un tocco, e non rubano spazio
+ * alla griglia.
+ *
+ * La prima etichetta è il conto che si sta battendo, e si tocca per dargli un
+ * nome. Il `+` apre invece un conto a parte, senza toccare quello in corso.
+ */
+function StrisciaConti({
+  corrente,
+  altri,
+  onCambiaCliente,
+  onNuovoConto,
+  onSvuota,
+}: {
+  corrente: string;
+  altri: Array<{ id: string; etichetta: string; totaleCent: number }>;
+  onCambiaCliente: () => void;
+  onNuovoConto: () => void;
+  /** `null` quando non c'è niente da buttare via: il tasto non compare. */
+  onSvuota: (() => void) | null;
+}) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-2">
+      <button
+        type="button"
+        onClick={onCambiaCliente}
+        aria-label={`Conto in corso: ${corrente}. Tocca per intestarlo a un cliente`}
+        className="flex h-11 min-w-0 shrink items-center gap-1.5 rounded-lg bg-[var(--color-superficie)] px-3"
+      >
+        <span className="truncate text-base font-bold">{corrente}</span>
+        <span aria-hidden className="text-xs text-[var(--color-testo-tenue)]">
+          ▾
+        </span>
+      </button>
+
+      <IndicatoreSync />
+
+      {onSvuota && (
+        <button
+          type="button"
+          onClick={onSvuota}
+          aria-label="Svuota il conto in corso"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-[var(--color-bordo)] text-lg text-[var(--color-testo-tenue)]"
+        >
+          ✕
+        </button>
+      )}
+
+      {altri.length > 0 && (
+        <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto">
+          {altri.map((b) => (
+            <Link
+              key={b.id}
+              href={`/conto/${b.id}`}
+              className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-[var(--color-bordo)] px-3 text-sm active:bg-[var(--color-superficie)]"
+            >
+              <span className="max-w-28 truncate">{b.etichetta}</span>
+              <span className="tabular-nums text-[var(--color-testo-tenue)]">
+                {formatEuro(b.totaleCent)}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onNuovoConto}
+        aria-label="Apri un altro conto"
+        className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-[var(--color-accento)] text-2xl font-light text-[var(--color-sfondo)]"
+      >
+        +
+      </button>
+    </div>
   );
 }
 

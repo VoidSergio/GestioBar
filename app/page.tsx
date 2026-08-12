@@ -1,6 +1,6 @@
 import { configurazionePresente } from '@/lib/supabase/configurazione';
 import { richiediAccesso } from '@/lib/supabase/accesso';
-import { HomeConti } from '@/components/shell/home-conti';
+import { SchermataApertura } from '@/components/shell/schermata-apertura';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,7 +23,7 @@ export default async function Home() {
   }
 
   // Seconda linea di difesa, indipendente da proxy.ts (lib/supabase/accesso.ts)
-  const utente = await richiediAccesso();
+  await richiediAccesso();
 
-  return <HomeConti nome={utente.profilo?.nome ?? null} />;
+  return <SchermataApertura />;
 }
