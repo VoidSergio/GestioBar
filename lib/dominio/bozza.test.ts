@@ -4,6 +4,8 @@ import {
   assegnaCliente,
   bozzaAlBanco,
   contiInAttesa,
+  etichettaBanco,
+  puoAndareACredito,
   unisci,
   diminuisci,
   eVuota,
@@ -283,5 +285,57 @@ describe('contiInAttesa', () => {
     const a = nuovaBozza('c1', 'cli-1', 'Anna', ORA + 1000);
     const b = nuovaBozza('c2', 'cli-2', 'Bruno', ORA + 2000);
     expect(contiInAttesa([a, banco, b], 'c0').map((x) => x.id)).toEqual(['c2', 'c1']);
+  });
+});
+
+describe('puoAndareACredito', () => {
+  it('serve un intestatario: un debito senza nome non è un debito', () => {
+    const banco = aggiungi(nuovaBozza('c1', null, 'Banco', ORA), CAFFE, ORA);
+    expect(puoAndareACredito(banco)).toBe(false);
+
+    const mario = assegnaCliente(banco, 'cli-1', 'Mario', ORA + 1000);
+    expect(puoAndareACredito(mario)).toBe(true);
+  });
+
+  it('un conto vuoto non va a credito: non c’è niente da segnare', () => {
+    expect(puoAndareACredito(nuovaBozza('c1', 'cli-1', 'Mario', ORA))).toBe(false);
+  });
+
+  it('la copia di prima dell’assegnazione non passa il controllo — è il bug del 12 agosto', () => {
+    // assegnaCliente restituisce un oggetto nuovo: quello vecchio resta
+    // senza cliente. Chi chiude usando la copia vecchia registra il conto a
+    // nessuno, e non lo segnala niente. Il controllo serve a fermarlo.
+    const prima = aggiungi(nuovaBozza('c1', null, 'Banco', ORA), CAFFE, ORA);
+    const dopo = assegnaCliente(prima, 'cli-1', 'Mario', ORA + 1000);
+
+    expect(puoAndareACredito(prima)).toBe(false);
+    expect(puoAndareACredito(dopo)).toBe(true);
+    expect(prima.clienteId).toBeNull();
+  });
+});
+
+describe('etichettaBanco', () => {
+  it('il primo conto senza cliente si chiama Banco', () => {
+    expect(etichettaBanco([])).toBe('Banco');
+    expect(etichettaBanco([nuovaBozza('c1', 'cli-1', 'Mario', ORA)])).toBe('Banco');
+  });
+
+  it('il secondo si numera: due etichette uguali nella striscia sono peggio di niente', () => {
+    const banco = nuovaBozza('c1', null, 'Banco', ORA);
+    expect(etichettaBanco([banco])).toBe('Banco 2');
+
+    const banco2 = nuovaBozza('c2', null, 'Banco 2', ORA);
+    expect(etichettaBanco([banco, banco2])).toBe('Banco 3');
+  });
+
+  it('riusa il numero che si è liberato', () => {
+    const banco = nuovaBozza('c1', null, 'Banco', ORA);
+    const banco3 = nuovaBozza('c3', null, 'Banco 3', ORA);
+    expect(etichettaBanco([banco, banco3])).toBe('Banco 2');
+  });
+
+  it('i conti intestati non contano', () => {
+    const mario = nuovaBozza('c1', 'cli-1', 'Banco', ORA);
+    expect(etichettaBanco([mario])).toBe('Banco');
   });
 });

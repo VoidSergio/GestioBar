@@ -9,6 +9,17 @@ import type { SaldoCliente } from '@/lib/supabase/tipi';
 interface Props {
   onScegli: (clienteId: string | null, etichetta: string) => void;
   onChiudi: () => void;
+  /** La domanda in cima. Cambia col motivo per cui la si sta facendo. */
+  titolo?: string;
+  /**
+   * Se il "Banco" è una risposta accettabile.
+   *
+   * Non lo è quando si sta segnando un conto a credito: un debito senza
+   * intestatario non è un debito, sono soldi che spariscono. Prima questa
+   * riga c'era anche lì, e sceglierla registrava un conto a credito a
+   * nessuno — vedi `09-DIARIO.md`.
+   */
+  mostraBanco?: boolean;
 }
 
 /**
@@ -17,7 +28,12 @@ interface Props {
  * Sale dal basso perché è il tap numero 2 di tre: deve cadere sotto il pollice
  * senza spostare la mano.
  */
-export function RicercaCliente({ onScegli, onChiudi }: Props) {
+export function RicercaCliente({
+  onScegli,
+  onChiudi,
+  titolo = 'A chi?',
+  mostraBanco = true,
+}: Props) {
   const { data: clienti } = useClienti();
   const crea = useCreaCliente();
   const [ricerca, setRicerca] = useState('');
@@ -58,7 +74,7 @@ export function RicercaCliente({ onScegli, onChiudi }: Props) {
         </div>
 
         <div className="px-5 pb-3 pt-4">
-          <h2 className="text-lg font-semibold">A chi?</h2>
+          <h2 className="text-lg font-semibold">{titolo}</h2>
           <input
             type="search"
             value={ricerca}
@@ -72,7 +88,7 @@ export function RicercaCliente({ onScegli, onChiudi }: Props) {
 
         <div className="min-h-0 flex-1 overflow-y-auto">
           {/* Il banco è sempre in cima: è il caso più frequente */}
-          {!ricerca && (
+          {mostraBanco && !ricerca && (
             <button
               type="button"
               onClick={() => onScegli(null, 'Banco')}

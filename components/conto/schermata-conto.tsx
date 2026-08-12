@@ -10,7 +10,13 @@ import { IndicatoreSync } from '@/components/shell/indicatore-sync';
 import { BarraNavigazione } from '@/components/shell/barra-navigazione';
 import { RicercaCliente } from '@/components/clienti/ricerca-cliente';
 import { descriviSaldo, formatEuro, statoSaldo } from '@/lib/dominio/denaro';
-import { contiInAttesa, eVuota, totaleBozza } from '@/lib/dominio/bozza';
+import {
+  contiInAttesa,
+  eVuota,
+  puoAndareACredito,
+  totaleBozza,
+  type Bozza,
+} from '@/lib/dominio/bozza';
 import {
   useAnnullaBozza,
   useApriConto,
@@ -57,7 +63,15 @@ interface Riepilogo {
 }
 
 /** Perché stiamo chiedendo "a chi?". Cambia solo cosa si fa con la risposta. */
-type MotivoRicerca = 'assegna' | 'nuovo' | 'a_credito';
+type MotivoRicerca = 'assegna' | 'nuovo' | 'a_credito' | 'incasso';
+
+/** La domanda in cima al pannello. Chiedere la cosa giusta costa zero. */
+const DOMANDA: Record<MotivoRicerca, string> = {
+  assegna: 'Di chi è questo conto?',
+  nuovo: 'Un altro conto, a chi?',
+  a_credito: 'A chi lo segno?',
+  incasso: 'Chi paga?',
+};
 
 export function SchermataConto({ id, eHome = false }: { id: string; eHome?: boolean }) {
   const router = useRouter();
@@ -129,10 +143,24 @@ export function SchermataConto({ id, eHome = false }: { id: string; eHome?: bool
 
   const debitoPrecedenteCent = cliente?.saldo_cent ?? 0;
 
-  async function chiudi(modo: Parameters<typeof conferma>[1], esito: Riepilogo) {
-    if (!bozza || vuota || inCorso) return;
+  /**
+   * Chiude un conto.
+   *
+   * **La bozza arriva come parametro, non dalla chiusura.** Sembra pedanteria
+   * e invece è il bug del 12 agosto: quando si assegna un cliente e si chiude
+   * subito dopo, `bozza` qui dentro è ancora la copia di *prima*
+   * dell'assegnazione — quella senza cliente. Il conto finiva registrato a
+   * nessuno, e il debito non compariva da nessuna parte. Chi chiude deve
+   * passare la bozza che ha in mano adesso.
+   */
+  async function chiudi(
+    daChiudere: Bozza,
+    modo: Parameters<typeof conferma>[1],
+    esito: Riepilogo,
+  ) {
+    if (eVuota(daChiudere) || inCorso) return;
     setInCorso(true);
-    await conferma(bozza, modo);
+    await conferma(daChiudere, modo);
     setPagamentoAperto(false);
     setInCorso(false);
     // Non si torna subito indietro: prima il barista vede com'è finita.
@@ -140,18 +168,30 @@ export function SchermataConto({ id, eHome = false }: { id: string; eHome?: bool
   }
 
   /** A CREDITO chiude in un tap, senza conferma: è reversibile con uno storno. */
-  function aCredito(clienteAggiornato?: { saldoCent: number; etichetta: string }) {
-    if (!bozza) return;
-    const debito = clienteAggiornato?.saldoCent ?? debitoPrecedenteCent;
+  function aCredito(daChiudere: Bozza, debitoCent: number) {
+    // Rete di sicurezza: se per qualunque strada si arrivasse qui senza
+    // intestatario, si chiede chi è invece di far sparire dei soldi.
+    if (!puoAndareACredito(daChiudere)) {
+      if (!eVuota(daChiudere)) setRicerca('a_credito');
+      return;
+    }
+
     void chiudi(
+      daChiudere,
       { tipo: 'a_credito' },
       {
-        etichetta: clienteAggiornato?.etichetta ?? bozza.etichetta,
-        nuovoSaldoCent: debito + totale,
+        etichetta: daChiudere.etichetta,
+        nuovoSaldoCent: debitoCent + totaleBozza(daChiudere),
         restoCent: 0,
-        haCliente: true,
+        haCliente: daChiudere.clienteId !== null,
       },
     );
+  }
+
+  /** Quanto deve già il cliente di una bozza, letto dalla cache dei saldi. */
+  function debitoDi(b: Bozza): number {
+    if (!b.clienteId) return 0;
+    return (clienti ?? []).find((c) => c.id === b.clienteId)?.saldo_cent ?? 0;
   }
 
   /**
@@ -168,22 +208,28 @@ export function SchermataConto({ id, eHome = false }: { id: string; eHome?: bool
       return;
     }
 
-    const idDopo = await assegna(bozza, clienteId, etichetta);
+    const dopo = await assegna(bozza, clienteId, etichetta);
 
+    // Chiesto per chiudere a credito: si chiude, e basta. Anche se le voci
+    // sono confluite in un conto che quella persona aveva già aperto — è
+    // comunque il suo conto, e quello che ha chiesto il barista è "segnalo
+    // a lui". Mandarlo su un'altra schermata a ripetere il gesto sarebbe
+    // un dispetto.
     if (motivo === 'a_credito') {
-      // Se le voci sono confluite in un conto che il cliente aveva già
-      // aperto, il conto da chiudere è quello: ci si va e si decide lì.
-      if (idDopo !== bozza.id) {
-        router.push(`/conto/${idDopo}`);
-        return;
-      }
-      const saldo = (clienti ?? []).find((c) => c.id === clienteId)?.saldo_cent ?? 0;
-      aCredito({ saldoCent: saldo, etichetta });
+      aCredito(dopo, debitoDi(dopo));
       return;
     }
 
-    // Assegnazione e basta: si continua a battere, con il nome giusto in cima.
-    if (!eHome || idDopo !== bozza.id) router.push(`/conto/${idDopo}`);
+    // Negli altri casi, se le voci sono confluite altrove ci si sposta sul
+    // conto vero. Un pannello d'incasso aperto si chiude: parlava di un
+    // altro conto, e la cifra da chiedere adesso è un'altra.
+    if (dopo.id !== bozza.id) {
+      setPagamentoAperto(false);
+      router.push(`/conto/${dopo.id}`);
+    }
+    // Stesso conto: si resta dove si è. Il nome cambia in cima e, se il
+    // pannello d'incasso è aperto, anche dentro — con il debito precedente
+    // che entra nel conteggio.
   }
 
   async function annullaConto() {
@@ -299,7 +345,9 @@ export function SchermataConto({ id, eHome = false }: { id: string; eHome?: bool
           <button
             type="button"
             disabled={vuota || inCorso}
-            onClick={() => (bozza.clienteId ? aCredito() : setRicerca('a_credito'))}
+            onClick={() =>
+              bozza.clienteId ? aCredito(bozza, debitoPrecedenteCent) : setRicerca('a_credito')
+            }
             className="h-16 flex-1 rounded-xl border-2 border-[var(--color-debito)] text-lg font-semibold text-[var(--color-debito)] active:bg-[var(--color-debito)]/10 disabled:opacity-40"
           >
             A CREDITO
@@ -311,6 +359,9 @@ export function SchermataConto({ id, eHome = false }: { id: string; eHome?: bool
 
       {ricerca && (
         <RicercaCliente
+          titolo={DOMANDA[ricerca]}
+          // Un conto a credito senza intestatario sono soldi che spariscono.
+          mostraBanco={ricerca !== 'a_credito'}
           onScegli={(clienteId, etichetta) => void rispondiRicerca(clienteId, etichetta)}
           onChiudi={() => setRicerca(null)}
         />
@@ -324,8 +375,10 @@ export function SchermataConto({ id, eHome = false }: { id: string; eHome?: bool
           haCliente={bozza.clienteId !== null}
           inCorso={inCorso}
           onChiudi={() => setPagamentoAperto(false)}
+          onCambiaCliente={() => setRicerca('incasso')}
           onConferma={(d) =>
             void chiudi(
+              bozza,
               {
                 tipo: 'incassato',
                 importoCent: d.importoCent,

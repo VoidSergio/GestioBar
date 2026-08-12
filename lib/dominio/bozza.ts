@@ -200,6 +200,30 @@ export function bozzaAlBanco(bozze: readonly Bozza[]): Bozza | null {
 }
 
 /**
+ * Come si chiama il prossimo conto senza cliente: "Banco", poi "Banco 2"…
+ *
+ * Serve perché dal `+` si può aprire un secondo conto anonimo — due gruppi
+ * al bancone che pagano tutti e due subito — e nella striscia in cima due
+ * etichette identiche sono peggio di niente: ci si mette dentro l'ordinazione
+ * sbagliata senza accorgersene.
+ */
+export function etichettaBanco(bozze: readonly Bozza[]): string {
+  const usate = new Set(
+    bozze.filter((b) => b.clienteId === null).map((b) => b.etichetta),
+  );
+
+  if (!usate.has('Banco')) return 'Banco';
+
+  for (let n = 2; n <= 99; n += 1) {
+    if (!usate.has(`Banco ${n}`)) return `Banco ${n}`;
+  }
+
+  // Novantanove conti aperti al banco non succede: se succede, meglio
+  // un'etichetta ripetuta che un ciclo che non finisce.
+  return 'Banco';
+}
+
+/**
  * I conti da mostrare nella striscia in cima alla schermata di apertura.
  *
  * Fuori quello in composizione, che è già tutto lo schermo, e fuori i conti
@@ -222,6 +246,23 @@ export function quantiPezzi(bozza: Bozza): number {
 
 export function eVuota(bozza: Bozza): boolean {
   return bozza.voci.length === 0;
+}
+
+/**
+ * Si può chiudere a credito?
+ *
+ * Solo se c'è un intestatario. **Un debito senza nome non è un debito: sono
+ * soldi che spariscono** — il conto risulta chiuso, la merce è uscita, e non
+ * c'è nessuno il cui saldo sia salito. Non lo segnala niente, perché dal
+ * punto di vista del database è tutto in ordine.
+ *
+ * È già successo (12 agosto): l'interfaccia chiedeva il cliente, lo salvava,
+ * e poi chiudeva usando una copia della bozza di *prima* dell'assegnazione.
+ * Questa funzione esiste perché quel controllo stia in un posto con dei test
+ * intorno, e non solo dentro un componente.
+ */
+export function puoAndareACredito(bozza: Bozza): boolean {
+  return bozza.clienteId !== null && !eVuota(bozza);
 }
 
 /**

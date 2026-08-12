@@ -6,6 +6,7 @@ import {
   aggiungi,
   assegnaCliente,
   bozzaAlBanco,
+  etichettaBanco,
   diminuisci,
   nuovaBozza,
   ordinaBozze,
@@ -20,6 +21,7 @@ import {
   bozzaDelCliente,
   eliminaBozza,
   leggiBozza,
+  leggiBozze,
   salvaBozza,
 } from '@/lib/offline/bozze';
 import { accoda } from '@/lib/offline/coda';
@@ -100,47 +102,79 @@ export function useBozza(id: string) {
  */
 export function useBanco(): { id: string | null; caricato: boolean } {
   const { bozze, caricato } = useBozze();
-  const banco = bozzaAlBanco(bozze);
+  /**
+   * IL CONTO IN CORSO SI TIENE, NON SI RICALCOLA.
+   *
+   * La prima versione derivava l'id a ogni render con `bozzaAlBanco(bozze)`,
+   * cioè "la bozza senza cliente". Sembrava equivalente, e per un minuto lo
+   * è: finché il conto è anonimo. Ma nell'istante in cui gli si dà un nome
+   * quella bozza smette di essere "senza cliente", `bozzaAlBanco` non la
+   * trova più, l'effetto ne apre una vuota e la schermata passa a quella —
+   * con l'ordinazione appena intestata che scompare davanti agli occhi.
+   *
+   * Il conto in corso è uno stato, non una conseguenza: si tiene finché
+   * esiste, comunque si chiami. Se ne cerca un altro solo quando quello di
+   * prima è sparito, cioè dopo una conferma o dopo che è stato svuotato.
+   */
+  const [fissato, setFissato] = useState<string | null>(null);
   // Senza questo, il doppio giro degli effetti in sviluppo aprirebbe due
-  // banchi invece di uno.
+  // conti invece di uno.
   const staCreando = useRef(false);
 
+  // Finché il conto fissato esiste è quello, comunque si chiami adesso.
+  // Se è sparito — confermato o svuotato — se ne prende un altro senza
+  // cliente, e se non ce n'è nessuno l'effetto qui sotto lo apre.
+  const corrente =
+    fissato !== null && bozze.some((b) => b.id === fissato)
+      ? fissato
+      : (bozzaAlBanco(bozze)?.id ?? null);
+
+  // Aggiustamento di stato durante il render: è il modo che React indica per
+  // tenere allineato uno stato a qualcosa che è cambiato, e costa un render
+  // in meno di un effetto.
+  if (corrente !== fissato) setFissato(corrente);
+
   useEffect(() => {
-    if (!caricato || banco || staCreando.current) return;
+    if (!caricato || corrente !== null || staCreando.current) return;
     staCreando.current = true;
-    void salvaBozza(nuovaBozza(nuovoId(), null, 'Banco')).finally(() => {
+    void salvaBozza(nuovaBozza(nuovoId(), null, etichettaBanco(bozze))).finally(() => {
       staCreando.current = false;
     });
-  }, [caricato, banco]);
+  }, [caricato, corrente, bozze]);
 
-  return { id: banco?.id ?? null, caricato };
+  return { id: corrente, caricato };
 }
 
 /**
  * Dà un nome a un conto che stava andando al banco.
  *
  * Se quel cliente ha già un conto aperto, le voci ci finiscono dentro invece
- * di aprirgliene un secondo (04-UX-MOBILE.md §4). Restituisce l'id del conto
- * su cui si continua: non è detto che sia quello di partenza.
+ * di aprirgliene un secondo (04-UX-MOBILE.md §4).
+ *
+ * **Restituisce la bozza aggiornata, non solo il suo id.** Chi chiama deve
+ * poterla usare subito: la copia che ha in mano è di prima dell'assegnazione
+ * e non ha il cliente dentro. Una chiusura fatta con quella registra il conto
+ * a nessuno — è esattamente il bug del 12 agosto (`09-DIARIO.md`).
  */
 export function useAssegnaCliente() {
   return async function assegna(
     bozza: Bozza,
     clienteId: string | null,
     etichetta: string,
-  ): Promise<string> {
+  ): Promise<Bozza> {
     if (clienteId) {
       const esistente = await bozzaDelCliente(clienteId);
       if (esistente && esistente.id !== bozza.id) {
-        await salvaBozza(unisci(esistente, bozza));
+        const unita = unisci(esistente, bozza);
+        await salvaBozza(unita);
         await eliminaBozza(bozza.id);
-        return esistente.id;
+        return unita;
       }
     }
 
     const aggiornata = assegnaCliente(bozza, clienteId, etichetta);
     await salvaBozza(aggiornata);
-    return aggiornata.id;
+    return aggiornata;
   };
 }
 
@@ -154,7 +188,11 @@ export function useApriConto() {
       if (esistente) return esistente.id;
     }
 
-    const bozza = nuovaBozza(nuovoId(), clienteId, etichetta);
+    // Due conti al banco aperti insieme devono avere due nomi diversi,
+    // altrimenti nella striscia in cima sono la stessa etichetta.
+    const nome = clienteId === null ? etichettaBanco(await leggiBozze()) : etichetta;
+
+    const bozza = nuovaBozza(nuovoId(), clienteId, nome);
     await salvaBozza(bozza);
     return bozza.id;
   };
