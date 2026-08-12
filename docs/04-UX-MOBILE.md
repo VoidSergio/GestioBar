@@ -9,8 +9,8 @@
 
 1. **Il pollice destro tiene il telefono.** Le azioni frequenti stanno nella metà bassa dello schermo. La parte alta è per le informazioni, non per i pulsanti.
 2. **Nessuna conferma per le azioni reversibili.** Aggiungere un caffè non chiede "sei sicuro?". Chiede invece una conferma incassare un pagamento, che non è reversibile.
-3. **Il numero più importante è il più grande.** Su ogni schermata c'è un solo numero grande: sulla home è il credito totale, sul conto è il totale del conto, sul cliente è il suo saldo.
-4. **Niente schermate vuote mute.** Uno stato vuoto dice cosa fare: "Nessun conto aperto. Tocca + per iniziare."
+3. **Il numero più importante è il più grande.** Su ogni schermata c'è un solo numero grande: al banco è il totale del conto, sui Crediti è il credito in giro, sul cliente è il suo saldo.
+4. **Niente schermate vuote mute.** Uno stato vuoto dice cosa fare, oppure non è uno stato vuoto: al banco non c'è nessun messaggio perché c'è già la griglia, e si comincia toccando un prodotto.
 5. **L'errore non blocca l'inserimento.** Se la rete manca, l'app funziona lo stesso e lo dice con discrezione.
 
 ---
@@ -95,7 +95,8 @@ Si può fare perché la bozza è locale fino alla conferma (DEC-08): finché non
 - Il conto al banco lo crea l'app da sola, se non c'è. È una bozza vuota: non tocca il database e non compare fra i conti aperti finché non ci batti dentro qualcosa.
 - **La striscia in cima** ha preso il posto dell'elenco: i conti aperti a nome di qualcuno sono etichette in fila con il loro totale, si leggono di sfuggita e si aprono con un tocco (§5). Un banco vuoto non compare: non è un conto aperto, è il posto dove si comincia a battere.
 - **La prima etichetta è il conto in corso.** Si tocca per intestarlo a un cliente senza perdere quello che si è già battuto. Se quel cliente ha già un conto aperto, le voci ci confluiscono dentro invece di aprirgliene un secondo.
-- Il **+** apre invece un conto *a parte*, senza toccare quello in corso: serve quando arriva un secondo gruppo mentre stai ancora battendo il primo.
+- Il **+** apre invece un conto *a parte*, senza toccare quello in corso: serve quando arriva un secondo gruppo mentre stai ancora battendo il primo. Se anche il secondo è senza nome si chiama "Banco 2", poi "Banco 3": due etichette identiche nella striscia sono peggio di niente, ci si mette dentro l'ordinazione sbagliata senza accorgersene.
+- **Il conto in corso resta quello anche quando gli dai un nome.** Non è un dettaglio di implementazione: se la schermata ricavasse ogni volta "il conto senza cliente", nell'istante dell'assegnazione l'ordinazione sparirebbe dallo schermo. È successo — `09-DIARIO.md`, 12 agosto.
 - La **✕** compare solo quando c'è qualcosa da buttare via, e svuota il conto in corso.
 - **A CREDITO senza cliente non sparisce, chiede a chi.** È l'unico momento in cui il nome serve davvero, ed è lì che si chiede.
 
@@ -103,7 +104,16 @@ Si può fare perché la bozza è locale fino alla conferma (DEC-08): finché non
 
 ## 4. Flusso: "a chi?"
 
-Il pannello che chiede il cliente sale dal basso. Si apre in tre momenti, e cambia solo cosa si fa con la risposta: dal nome del conto in corso (lo intesta), dal **+** (apre un conto nuovo), da **A CREDITO** su un conto senza cliente (lo intesta e lo chiude).
+Il pannello che chiede il cliente sale dal basso. È sempre lo stesso; cambiano la domanda in cima e cosa si fa con la risposta.
+
+| Da dove | La domanda | Cosa succede |
+|---|---|---|
+| il nome del conto in corso | "Di chi è questo conto?" | lo intesta, e si continua a battere |
+| il **+** | "Un altro conto, a chi?" | ne apre uno a parte, quello in corso non si tocca |
+| **A CREDITO** senza cliente | "A chi lo segno?" | lo intesta e lo chiude. **Qui "Banco" non compare** |
+| il nome dentro il pannello Incassa | "Chi paga?" | lo intesta senza chiudere il pannello |
+
+La domanda cambia perché costa zero e toglie un'esitazione: "A chi?" davanti a un conto già battuto non dice se stai per chiuderlo o per rinominarlo.
 
 ```
 ┌─────────────────────────────────┐
@@ -229,7 +239,7 @@ Per il conto "Banco", **A CREDITO** non compare: non c'è un cliente a cui addeb
 │ ┌─────────────┬───────────────┐ │  │  ferma
 │ │   ✓ SÌ      │      NO       │ │  │  in alto
 │ └─────────────┴───────────────┘ │  │
-│ Quanto ti ha dato               │  │
+│ Quanto ti ha dato   [ Banco ▾ ] │  │
 │ ┌───────────────────────────┐   │  │
 │ │                    32,90  │   │  │
 │ └───────────────────────────┘   │  ┘
@@ -257,6 +267,14 @@ In alto e ferma la scelta dello scontrino e l'importo — quello che devi vedere
 **Niente tastiera di sistema.** Si mangiava metà schermo, e in un pannello dove bisogna anche vedere il dovuto, scegliere il metodo e arrivare a CONFERMA quella metà voleva dire scorrere *con la tastiera aperta*: il gesto più scomodo che ci sia con una mano sola. E i suoi tasti sono piccoli, perché sono fatti per scrivere parole. Qui servono dieci cifre, e servono grandi.
 
 **Lo scontrino è due tasti, non una spunta, ed è la prima cosa in alto.** Una spunta in mezzo al pannello finiva fuori schermo con la tastiera aperta, e una spunta che non si vede è una spunta che nessuno controlla. Il tasto scelto è pieno di colore e porta il segno di spunta — in penombra due tinte si confondono, un ✓ no. Resta la memoria dell'ultima scelta, perché al banco è quasi sempre la stessa: la differenza è che ora la scelta ricordata **si vede**.
+
+**Chi paga si sceglie anche qui.** Accanto a "Quanto ti ha dato" c'è il nome del conto: "Banco ▾" se non ne ha uno, il cliente se ce l'ha. Si tocca e si intesta, senza chiudere il pannello.
+
+Serve perché un conto battuto al banco non ha un nome — e va benissimo finché lo si incassa e basta. Ma se quello davanti è un cliente abituale, perché lascia un pezzo, perché ha un debito vecchio da coprire, o solo perché la consumazione deve restare nella sua storia, il nome serve **adesso**, non prima di battere il caffè. Chiederlo qui costa un tocco a chi ne ha bisogno e zero a tutti gli altri.
+
+Intestando il conto a pannello aperto il dovuto cambia: al totale si aggiunge il debito che quella persona si trascina. Il precompilato lo segue, ma solo finché nessuno ha toccato il tastierino — una cifra scritta a mano non si sovrascrive mai.
+
+**A CREDITO invece non accetta il banco.** Quando la domanda è "a chi lo segno?", la voce "Banco" non compare: un debito senza intestatario non è un debito, sono soldi che escono e non compaiono da nessuna parte. La regola non vive qui, però: sta in `puoAndareACredito` (`lib/dominio/bozza.ts`), con i test intorno. Il perché è in `09-DIARIO.md`.
 
 **Dettagli:**
 

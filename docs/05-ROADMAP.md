@@ -30,7 +30,7 @@
 | T-17 PWA | 🟨 quasi | service worker scritto a mano, pagina offline. **Da provare sui telefoni e con Lighthouse** |
 | T-18 Collaudo | 🟨 in corso | cominciato. Tre attriti già raccolti e corretti il 12 agosto — vedi il task e `09-DIARIO.md` |
 
-**Fase 0 chiusa.** L'app è pubblicata su Netlify, 266 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
+**Fase 0 chiusa.** L'app è pubblicata su Netlify, 273 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
 
 **Navigazione:** tab bar in basso (04-UX-MOBILE §2) sulle schermate principali, banco compreso. Sulla scheda Crediti, al posto della parola, c'è il credito in giro: era il numero grande della vecchia home e non poteva finire dietro un tocco.
 
@@ -484,6 +484,9 @@ giornata. Il ragionamento completo, con la causa vera, sta in `09-DIARIO.md`.
 | Per battere un prodotto servivano due tap prima di vedere la griglia | La schermata di apertura **è** la griglia, su un conto al banco sempre pronto. Il cliente si chiede alla fine | `04-UX-MOBILE.md` §3 |
 | "Scontrino battuto" finiva sotto la tastiera: per vederlo bisognava scorrere | Due tasti Sì/No da 56 px, prima cosa in cima al pannello, con lo stato scelto evidente | `04-UX-MOBILE.md` §6 |
 | La virgola negli importi era un tasto da sbagliare | Inserimento stile bancomat: le cifre entrano da destra, "250" è 2,50 €. Tastierino nel pannello, niente tastiera di sistema | `04-UX-MOBILE.md` §6.1 |
+| Un conto segnato a credito non finiva sul saldo di nessuno | La bozza aggiornata si passa invece di ripescarla, e il divieto è diventato `puoAndareACredito` con i test intorno | `09-DIARIO.md` |
+| Dando un nome al conto in corso, l'ordinazione spariva dallo schermo | Il conto in corso è uno stato che si tiene, non "la bozza senza cliente" ricalcolata a ogni render | `04-UX-MOBILE.md` §3 |
+| Incassando non si poteva intestare il conto a nessuno | Il nome del conto è accanto all'importo e si tocca per cambiarlo, senza chiudere il pannello | `04-UX-MOBILE.md` §6 |
 
 Sono correzioni di T-18, non anticipi di T-19: non aggiungono funzioni, tolgono attrito da
 funzioni che c'erano già. Il criterio dei tap qui sopra è stato riscritto di conseguenza — la

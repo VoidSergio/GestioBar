@@ -344,3 +344,57 @@ E una preferenza ricordata va messa dove si legge senza cercarla, altrimenti sme
 preferenza e diventa un valore predefinito che nessuno rivede.
 
 ---
+
+## 12 agosto 2026 — un conto segnato a credito a nessuno
+
+**Cosa si è visto.** Dal banco: *«è capitato di assegnare a credito a una persona ma non lo ha
+assegnato»*. Senza altri dettagli, perché non c'era niente da vedere: il conto risultava chiuso,
+la merce era uscita, e il saldo di quella persona non era salito di un centesimo. Nessun errore,
+nessun avviso. Soldi spariti in silenzio.
+
+**Perché.** Due cause, sovrapposte.
+
+La prima è una copia vecchia. Premendo **A CREDITO** su un conto senza intestatario si apriva
+"a chi?", si assegnava il cliente e si chiudeva subito dopo. Ma `assegnaCliente` restituisce un
+oggetto nuovo — le bozze sono immutabili — mentre `chiudi()` continuava a leggere la variabile
+`bozza` della chiusura di render, cioè **la bozza di prima dell'assegnazione**. Quella senza
+cliente. `useConfermaConto` riceveva `clienteId: null`, registrava un conto intestato a nessuno
+e saltava del tutto l'aggiornamento del saldo, perché è dentro un `if (bozza.clienteId)`.
+
+La seconda è che niente si opponeva. Un conto a credito senza intestatario è una contraddizione
+— non è un debito, sono soldi che escono e non compaiono da nessuna parte — e non c'era **nessun
+posto** in cui quella contraddizione fosse scritta. Il database la accetta (`cliente_id` è
+opzionale, e deve esserlo: i conti al banco esistono). L'interfaccia la impediva solo *per come
+era disposta*, e una regola che vive nella disposizione dei pulsanti dura finché nessuno tocca
+i pulsanti. Nella stessa versione il pannello "a chi?" mostrava anche la voce **Banco** quando la
+domanda era "a chi lo segno?": sceglierla registrava esattamente lo stesso conto a nessuno, per
+una strada diversa.
+
+C'era anche un terzo effetto, riportato come *«qualche bug quando faccio un'assegnazione»*: dando
+un nome al conto in corso, quello spariva dallo schermo. La schermata di apertura ricavava il
+conto da mostrare con "la bozza senza cliente", ricalcolandolo a ogni render. Nell'istante
+dell'assegnazione quella bozza smetteva di essere senza cliente, non veniva più trovata, e la
+schermata apriva un conto vuoto e ci si spostava sopra — con l'ordinazione appena intestata che
+scompariva davanti agli occhi. Il conto non era perso (stava nella striscia in cima), ma dal
+banco non si poteva sapere.
+
+**Cosa si è fatto.** `useAssegnaCliente` restituisce la bozza aggiornata e non più solo il suo
+id, e `chiudi()` prende la bozza come parametro invece di leggerla dalla chiusura: chi chiude
+deve passare quella che ha in mano *adesso*. Il divieto è diventato una funzione con dei test
+intorno, `puoAndareACredito` in `lib/dominio/bozza.ts`, usata come rete di sicurezza in
+`aCredito`: se per qualunque strada ci si arrivasse senza intestatario, si chiede chi è invece
+di far sparire dei soldi. La voce **Banco** non compare quando la domanda è "a chi lo segno?".
+E il conto in corso della schermata di apertura è diventato uno stato che si tiene, non una
+conseguenza che si ricalcola: resta quello finché esiste, comunque si chiami.
+
+**La regola.** Con dati immutabili, **il risultato di una modifica va passato, non ripescato**.
+Dopo un `await` che ha cambiato qualcosa, ogni variabile della chiusura di render è di prima:
+sembra aggiornata perché ha il nome giusto, e non lo è.
+
+E la seconda, che vale più della prima: **una regola sui soldi non può vivere nella disposizione
+dell'interfaccia.** Se "un conto a credito ha sempre un intestatario" è vero, deve stare in una
+funzione pura con dei test, dove nessun riordino di pulsanti la può aggirare. Finché stava solo
+nel fatto che il tasto apriva un pannello, bastava una strada nuova — e la strada nuova l'aveva
+aggiunta lo stesso commit.
+
+---

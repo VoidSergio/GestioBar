@@ -11,13 +11,15 @@ Gestionale per un bar, mobile-first, in italiano. Serve a sapere con certezza **
 
 Stack: Next.js 16 (App Router, Turbopack) + TypeScript strict + Supabase + TanStack Query + Tailwind 4.
 
-**Stato:** Fase 0 chiusa, app pubblicata su Netlify. Fatti T-06 (accesso), T-07 (cache offline), T-08 (clienti), T-09 (coda), T-10 (griglia), T-11 (apertura conto), T-12 (righe), T-13 (chiusura conto), T-14 (scheda cliente), T-15 (crediti), T-16 (listino), T-17 (PWA), più **T-20 e T-22** (chiusura di turno) anticipati dalla Fase 2 — il perché è scritto in `05-ROADMAP.md`. 63 prodotti a catalogo, 266 test verdi. Il giro completo funziona. **T-18 è cominciato**: le prime tre correzioni dal banco sono in `09-DIARIO.md` alla data del 12 agosto.
+**Stato:** Fase 0 chiusa, app pubblicata su Netlify. Fatti T-06 (accesso), T-07 (cache offline), T-08 (clienti), T-09 (coda), T-10 (griglia), T-11 (apertura conto), T-12 (righe), T-13 (chiusura conto), T-14 (scheda cliente), T-15 (crediti), T-16 (listino), T-17 (PWA), più **T-20 e T-22** (chiusura di turno) anticipati dalla Fase 2 — il perché è scritto in `05-ROADMAP.md`. 63 prodotti a catalogo, 273 test verdi. Il giro completo funziona. **T-18 è cominciato**: le prime tre correzioni dal banco sono in `09-DIARIO.md` alla data del 12 agosto.
 
 **La schermata di apertura è la griglia prodotti**, non l'elenco dei conti. L'app tiene sempre pronto un conto al banco (`useBanco` in `lib/hooks/use-bozze.ts`): aperta l'app, il primo tocco è il prodotto. Il cliente si chiede alla fine, e solo se il conto resta a debito. I conti aperti stanno nella striscia in cima. Il perché sta in `04-UX-MOBILE.md` §3 — non è un dettaglio estetico, è il vincolo dei tap misurato dal punto giusto.
 
 **Prima di scrivere SQL:** `npm run verifica:migrazioni` esegue tutte le migrazioni su un Postgres in WebAssembly e controlla che facciano quello che dicono. Una migrazione non si incolla in produzione senza averla vista girare — l'8 agosto ha trovato un pagamento perso che nessuno aveva visto leggendo il file.
 
 **Il saldo si legge da un posto solo, ma sta in due cache.** L'elenco (`clienti-con-saldo`) e la scheda (`['cliente', id]`) contengono lo stesso numero: chi lo muove usa `aggiornaSaldoInCache()` in `lib/hooks/use-clienti.ts`, che le tocca entrambe. **Mai `invalidateQueries` subito dopo `accoda()`**: la rilettura parte prima che la scrittura arrivi al server e ricasca sul valore vecchio marcandolo fresco (`03-ARCHITETTURA.md` §4.3).
+
+**Un conto a credito ha sempre un intestatario.** La regola sta in `puoAndareACredito()` (`lib/dominio/bozza.ts`), non nella disposizione dei pulsanti: un debito senza nome non è un debito, sono soldi che escono e non compaiono da nessuna parte. E dopo un `await` che ha modificato una bozza, **passa il risultato invece di ripescarlo**: le variabili della chiusura di render sono di prima, e sembrano aggiornate perché hanno il nome giusto (`09-DIARIO.md`, 12 agosto).
 
 **Un conto confermato nasce sempre `chiuso`**, anche a credito: `stato` dice se lo stai ancora battendo, non se è stato pagato. Il debito vive in `v_saldo_clienti`.
 
