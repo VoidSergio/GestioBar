@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { formatEuro, parseEuro } from '@/lib/dominio/denaro';
+import { cancellaCifra, centesimiInCampo, digitaCifre, formatEuro } from '@/lib/dominio/denaro';
+import { Tastierino } from '@/components/comune/tastierino';
 import {
   calcolaLettura,
   descriviDurata,
@@ -27,7 +28,12 @@ export function ChiusuraTurno({ utenteId, nome }: Props) {
   const turno = useTurnoCorrente();
   const chiudi = useChiudiTurno();
 
-  const [testo, setTesto] = useState('');
+  /**
+   * `null` finché non si è digitato niente: senza questa distinzione la
+   * schermata direbbe "manca 480,00 €" a chi ha appena aperto la pagina e
+   * non ha ancora contato una moneta.
+   */
+  const [contato, setContato] = useState<number | null>(null);
   const [causale, setCausale] = useState('');
   const [errore, setErrore] = useState<string | null>(null);
   const [fatta, setFatta] = useState<{ ritiraCent: number; lasciaCent: number } | null>(null);
@@ -90,7 +96,6 @@ export function ChiusuraTurno({ utenteId, nome }: Props) {
   }
 
   /* ------------------------------------------ la lettura */
-  const contato = parseEuro(testo);
   const lettura = contato === null ? null : calcolaLettura(stato, contato);
   const segno = lettura ? segnoDifferenza(lettura.differenzaCent) : null;
   const causaleRichiesta = lettura !== null && serveCausale(lettura.differenzaCent);
@@ -154,20 +159,42 @@ export function ChiusuraTurno({ utenteId, nome }: Props) {
           </div>
         </dl>
 
-        <label className="mt-8 block">
-          <span className="text-sm uppercase tracking-wide text-[var(--color-testo-tenue)]">
+        {/* Le cifre entrano da destra e la virgola non si digita: 2450 è
+            24,50 €. Stessa regola dei pannelli d'incasso, stesso tastierino —
+            contare la cassa con la tastiera del telefono aperta sopra i
+            numeri era il modo più veloce per sbagliare una cifra. */}
+        <div className="mt-8">
+          <p className="text-sm uppercase tracking-wide text-[var(--color-testo-tenue)]">
             Contato nel cassetto
-          </span>
-          <input
-            value={testo}
-            onChange={(e) => setTesto(e.target.value)}
-            inputMode="decimal"
-            autoFocus
-            placeholder="0,00"
+          </p>
+          <output
+            aria-live="polite"
             aria-label="Quanto c'è nel cassetto"
-            className="mt-2 min-h-16 w-full rounded-xl border border-[var(--color-bordo)] bg-[var(--color-superficie)] px-4 text-3xl font-bold tabular-nums"
-          />
-        </label>
+            className={`mt-2 flex min-h-16 items-center justify-end rounded-xl border bg-[var(--color-superficie)] px-4 text-3xl font-bold tabular-nums ${
+              contato === null
+                ? 'border-[var(--color-bordo)] text-[var(--color-testo-tenue)]'
+                : 'border-[var(--color-accento)]'
+            }`}
+          >
+            {centesimiInCampo(contato ?? 0)}
+          </output>
+
+          <div className="mt-3 max-w-xs">
+            <Tastierino
+              descrizione="quanto c'è nel cassetto"
+              onCifre={(cifre) => {
+                setErrore(null);
+                setContato((attuale) => digitaCifre(attuale ?? 0, cifre));
+              }}
+              onCancella={() => {
+                setErrore(null);
+                // Cancellata l'ultima cifra si torna al campo vuoto, non a
+                // "zero euro contati": sono due cose diverse.
+                setContato((attuale) => (attuale === null ? null : cancellaCifra(attuale) || null));
+              }}
+            />
+          </div>
+        </div>
 
         {lettura && (
           <div className="mt-6">
