@@ -2,7 +2,12 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { centesimiInCampo, formatEuro, parseEuro } from '@/lib/dominio/denaro';
+import {
+  centesimiInCampo,
+  cifreInCentesimi,
+  formatEuro,
+  mascheraImporto,
+} from '@/lib/dominio/denaro';
 import {
   avvisoCambioPrezzo,
   LIMITE_PREFERITI,
@@ -185,7 +190,8 @@ function RigaListino({
 
   async function salvaPrezzo() {
     setErrore(null);
-    const nuovo = parseEuro(testo);
+    // Stessa regola del tastierino: le cifre valgono centesimi, "125" è 1,25 €.
+    const nuovo = testo === '' ? null : cifreInCentesimi(testo);
     const controllo = validaPrezzo(nuovo);
 
     if (!controllo.valido) {
@@ -227,7 +233,7 @@ function RigaListino({
         {inModifica ? (
           <input
             value={testo}
-            onChange={(e) => setTesto(e.target.value)}
+            onChange={(e) => setTesto(mascheraImporto(e.target.value))}
             onBlur={() => void salvaPrezzo()}
             onKeyDown={(e) => {
               if (e.key === 'Enter') void salvaPrezzo();
@@ -236,7 +242,7 @@ function RigaListino({
                 setInModifica(false);
               }
             }}
-            inputMode="decimal"
+            inputMode="numeric"
             autoFocus
             onFocus={(e) => e.currentTarget.select()}
             aria-label={`Prezzo di ${nomeCompleto(voce.nome_base, voce.variante)}`}

@@ -97,6 +97,88 @@ export function centesimiInCampo(importoCent: number): string {
   return `${cifre.slice(0, -2)},${cifre.slice(-2)}`;
 }
 
+/* ------------------------------------------------------------------ *
+ * Inserimento stile bancomat
+ *
+ * Al banco la virgola è un tasto sbagliato: si digita con una mano sola,
+ * spesso bagnata, e un tasto premuto per sbaglio sposta un importo di un
+ * fattore cento senza che nessuno se ne accorga.
+ *
+ * Quindi la virgola non si digita: le cifre entrano da destra, come su un
+ * bancomat o su un registratore di cassa.
+ *
+ *   2      →   0,02
+ *   25     →   0,25
+ *   250    →   2,50
+ *   25000  → 250,00
+ *
+ * Il valore in lavorazione è **sempre un intero di centesimi**: non esiste
+ * uno stato intermedio "testo che forse è un numero", quindi non esiste il
+ * momento in cui l'importo è ambiguo. Per scriverlo a schermo si usa
+ * `centesimiInCampo`, che non divide niente.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Tetto dell'inserimento: 999.999,99 €.
+ *
+ * Non è una regola contabile, è un paracadute: serve a fermare il dito che
+ * resta premuto sul 9 prima che il numero esca dagli interi sicuri.
+ */
+export const MASSIMO_DIGITABILE = 99_999_999;
+
+/**
+ * Aggiunge una o più cifre a destra dell'importo.
+ *
+ * Accetta anche "00" — il tasto che sulle casse fa risparmiare un tocco su
+ * ogni prezzo tondo. Tutto ciò che non è una cifra viene ignorato: incollare
+ * "12,50" dagli appunti dà 1250, cioè 12,50 €, che è la lettura giusta.
+ *
+ * Se il risultato sfonda il tetto, restituisce l'importo di partenza: il
+ * tasto non fa niente invece di produrre un numero assurdo.
+ */
+export function digitaCifre(correnteCent: number, cifre: string): Centesimi {
+  let valore: number = centesimi(correnteCent);
+
+  for (const carattere of cifre) {
+    if (carattere < '0' || carattere > '9') continue;
+    const prossimo = valore * 10 + Number(carattere);
+    if (prossimo > MASSIMO_DIGITABILE) return centesimi(valore);
+    valore = prossimo;
+  }
+
+  return centesimi(valore);
+}
+
+/** Cancella l'ultima cifra a destra. Da 2,50 si torna a 0,25, poi a 0,02. */
+export function cancellaCifra(correnteCent: number): Centesimi {
+  return centesimi(Math.trunc(centesimi(correnteCent) / 10));
+}
+
+/**
+ * Legge come importo qualunque cosa sia finita dentro un campo di testo,
+ * con la stessa regola del tastierino.
+ *
+ * Serve ai campi dove la tastiera di sistema resta (il listino, dove si
+ * scrive con calma): la regola dev'essere identica dappertutto, altrimenti
+ * "250" varrebbe 2,50 € in una schermata e 250,00 € in un'altra. È
+ * esattamente l'ambiguità che questo modulo esiste per togliere di mezzo.
+ */
+export function cifreInCentesimi(testo: string): Centesimi {
+  return digitaCifre(0, testo);
+}
+
+/**
+ * Riscrive un campo di testo mentre lo si digita, con la virgola già al suo
+ * posto: "1" diventa "0,01", "12" diventa "0,12", "125" diventa "1,25".
+ *
+ * Il campo vuoto resta vuoto — è l'unico modo per distinguere "non ho ancora
+ * scritto niente" da "ho scritto zero", e su un prezzo la differenza conta.
+ */
+export function mascheraImporto(testo: string): string {
+  const cifre = testo.replace(/\D/g, '');
+  return cifre === '' ? '' : centesimiInCampo(cifreInCentesimi(cifre));
+}
+
 /** Somma una lista di importi restando nel dominio degli interi. */
 export function sommaCentesimi(valori: readonly number[]): Centesimi {
   return centesimi(valori.reduce((acc, v) => acc + v, 0));

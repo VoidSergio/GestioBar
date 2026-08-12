@@ -10,6 +10,11 @@ import {
   statoSaldo,
   descriviSaldo,
   ZERO,
+  digitaCifre,
+  cancellaCifra,
+  cifreInCentesimi,
+  MASSIMO_DIGITABILE,
+  mascheraImporto,
 } from './denaro';
 
 // Lo spazio prima di € prodotto da Intl è uno spazio unificatore (U+00A0),
@@ -206,5 +211,104 @@ describe('centesimiInCampo', () => {
   it('formatEuro invece non torna indietro: ecco perché questa funzione esiste', () => {
     // "1.234,50 €" non è un importo valido per parseEuro
     expect(parseEuro(formatEuro(123450))).toBeNull();
+  });
+});
+
+describe('inserimento stile bancomat', () => {
+  it('le cifre entrano da destra: 2 → 0,02, 25 → 0,25, 250 → 2,50', () => {
+    let v = ZERO as number;
+    v = digitaCifre(v, '2');
+    expect(centesimiInCampo(v)).toBe('0,02');
+    v = digitaCifre(v, '5');
+    expect(centesimiInCampo(v)).toBe('0,25');
+    v = digitaCifre(v, '0');
+    expect(centesimiInCampo(v)).toBe('2,50');
+    v = digitaCifre(v, '0');
+    expect(centesimiInCampo(v)).toBe('25,00');
+    v = digitaCifre(v, '0');
+    expect(centesimiInCampo(v)).toBe('250,00');
+  });
+
+  it('il tasto 00 vale due cifre', () => {
+    expect(digitaCifre(ZERO, '2')).toBe(2);
+    expect(digitaCifre(2, '00')).toBe(200);
+    // 25 → 0,25; poi "00" spinge dentro due zeri → 25,00
+    expect(centesimiInCampo(digitaCifre(digitaCifre(ZERO, '25'), '00'))).toBe('25,00');
+  });
+
+  it('lo zero iniziale non si accumula: 0,00 resta 0,00', () => {
+    expect(digitaCifre(ZERO, '0')).toBe(0);
+    expect(digitaCifre(ZERO, '000')).toBe(0);
+    expect(digitaCifre(digitaCifre(ZERO, '000'), '5')).toBe(5);
+  });
+
+  it('ignora tutto ciò che non è una cifra', () => {
+    expect(digitaCifre(ZERO, '1,20')).toBe(120);
+    expect(digitaCifre(ZERO, ' 12 € ')).toBe(12);
+    expect(digitaCifre(ZERO, 'abc')).toBe(0);
+  });
+
+  it('oltre il tetto il tasto non fa niente, invece di produrre un numero assurdo', () => {
+    expect(digitaCifre(MASSIMO_DIGITABILE, '9')).toBe(MASSIMO_DIGITABILE);
+    // le cifre già accettate restano: si ferma, non annulla
+    expect(digitaCifre(9_999_999, '99')).toBe(99_999_999);
+    expect(Number.isSafeInteger(digitaCifre(MASSIMO_DIGITABILE, '999999'))).toBe(true);
+  });
+
+  it('cancella toglie una cifra a destra fino a zero', () => {
+    expect(cancellaCifra(2500)).toBe(250);
+    expect(cancellaCifra(250)).toBe(25);
+    expect(cancellaCifra(25)).toBe(2);
+    expect(cancellaCifra(2)).toBe(0);
+    expect(cancellaCifra(0)).toBe(0);
+  });
+
+  it('digita e cancella si annullano a vicenda', () => {
+    for (const c of [0, 5, 99, 120, 3290, 123456]) {
+      expect(cancellaCifra(digitaCifre(c, '7'))).toBe(c);
+    }
+  });
+
+  it('cifreInCentesimi legge un campo di testo con la stessa regola', () => {
+    expect(cifreInCentesimi('')).toBe(0);
+    expect(cifreInCentesimi('250')).toBe(250);
+    expect(cifreInCentesimi('25000')).toBe(25000);
+    // la regola è identica al tastierino: nessuna schermata legge "250"
+    // in modo diverso da un'altra
+    expect(cifreInCentesimi('250')).toBe(digitaCifre(ZERO, '250'));
+  });
+
+  it('quello che si digita, centesimiInCampo lo riscrive uguale', () => {
+    for (const cifre of ['1', '12', '123', '1234', '100', '999']) {
+      const importo = digitaCifre(ZERO, cifre);
+      expect(cifreInCentesimi(centesimiInCampo(importo))).toBe(importo);
+    }
+  });
+});
+
+describe('mascheraImporto', () => {
+  it('mette la virgola al posto giusto mentre si digita', () => {
+    expect(mascheraImporto('1')).toBe('0,01');
+    expect(mascheraImporto('12')).toBe('0,12');
+    expect(mascheraImporto('125')).toBe('1,25');
+    expect(mascheraImporto('1250')).toBe('12,50');
+  });
+
+  it('il campo vuoto resta vuoto: non ho scritto niente non è ho scritto zero', () => {
+    expect(mascheraImporto('')).toBe('');
+    expect(mascheraImporto('abc')).toBe('');
+    expect(mascheraImporto('0')).toBe('0,00');
+  });
+
+  it('è stabile: rimasticare il risultato non lo cambia', () => {
+    for (const t of ['1', '125', '1250', '99999']) {
+      const una = mascheraImporto(t);
+      expect(mascheraImporto(una)).toBe(una);
+    }
+  });
+
+  it('cancellare una cifra sposta la virgola indietro, come sul tastierino', () => {
+    // "12,50" meno l'ultimo carattere → "12,5" → 1,25
+    expect(mascheraImporto('12,5')).toBe('1,25');
   });
 });

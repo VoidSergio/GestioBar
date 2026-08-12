@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { parseEuro } from '@/lib/dominio/denaro';
+import { cifreInCentesimi, mascheraImporto } from '@/lib/dominio/denaro';
 import { nomeCompleto, validaNuovaVoce } from '@/lib/dominio/listino';
 import { useCreaVoceListino } from '@/lib/hooks/use-listino';
 import type { Categoria } from '@/lib/supabase/tipi';
@@ -59,7 +59,8 @@ export function ModuloNuovaVoce({
     setErrore(null);
 
     const controllo = validaNuovaVoce(
-      { nomeBase, variante, prezzoCent: parseEuro(prezzo) },
+      // Le cifre valgono centesimi, come sul tastierino: "120" è 1,20 €.
+      { nomeBase, variante, prezzoCent: prezzo === '' ? null : cifreInCentesimi(prezzo) },
       esistenti,
     );
     if (!controllo.valido) {
@@ -134,9 +135,9 @@ export function ModuloNuovaVoce({
           <span className="text-sm text-[var(--color-testo-tenue)]">Prezzo</span>
           <input
             value={prezzo}
-            onChange={(e) => setPrezzo(e.target.value)}
+            onChange={(e) => setPrezzo(mascheraImporto(e.target.value))}
             placeholder="1,20"
-            inputMode="decimal"
+            inputMode="numeric"
             className="h-14 rounded-xl border border-[var(--color-bordo)] bg-[var(--color-sfondo)] px-4 text-lg font-semibold tabular-nums outline-none focus:border-[var(--color-accento)]"
           />
         </label>
