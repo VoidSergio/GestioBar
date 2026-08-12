@@ -50,9 +50,20 @@ annotato è un dato; un cliente spazientito è un cliente spazientito.
 
 I criteri sono in `05-ROADMAP.md` T-18. Qui c'è come si verificano davvero.
 
-### 3.1 Un caffè a un cliente esistente in 3 tap, cronometrato
+### 3.1 Un caffè cronometrato: 1 tap se paga, 3 se resta a debito
 
-Il percorso previsto (`04-UX-MOBILE.md` §5) è: home → **+** (1) → il cliente (2) → **Caffè** (3).
+Sono **due** percorsi, e vanno misurati separati perché il primo è la giornata e il secondo è
+l'eccezione (`04-UX-MOBILE.md` §3):
+
+- **paga subito:** apri l'app → **Caffè** (1) → INCASSA → CONFERMA;
+- **a credito:** apri l'app → **Caffè** (1) → **A CREDITO** (2) → il cliente (3).
+
+> **Nota del 12 agosto.** La versione precedente di questo criterio diceva "3 tap dalla home" e
+> contava home → **+** → cliente → Caffè. Il numero tornava, ma misurava la strada per registrare
+> *a un cliente* trattandola come la strada per registrare: due tap su tre servivano a rispondere
+> a "a chi?", domanda che nella maggior parte della giornata non ha risposta. Il motivo per cui
+> il criterio è cambiato sta in `09-DIARIO.md`, ed è la cosa più utile di questa pagina: un
+> criterio può passare benissimo e misurare la cosa sbagliata.
 
 **Come misurarlo.** Non a mente e non una volta sola. Prendi il cronometro del telefono — o
 meglio, fatti cronometrare da qualcuno — e fallo **cinque volte in momenti diversi della
@@ -64,8 +75,9 @@ compreso.
 hai dovuto cercarlo, sono quattro o cinque tap: quello è il numero da scrivere. Il criterio
 riguarda il caso comune, ma il caso comune vero lo definisce la settimana, non il documento.
 
-**Passa se:** tre tap nel caso comune, e il tempo totale è al di sotto di quello che ci metti a
-scriverlo sul foglio. Cronometra anche il foglio, almeno una volta. È il confronto che conta.
+**Passa se:** un tap per il caffè pagato, tre per quello a credito, e il tempo totale è al di
+sotto di quello che ci metti a scriverlo sul foglio. Cronometra anche il foglio, almeno una
+volta. È il confronto che conta.
 
 ### 3.2 L'app si apre in meno di 1,5 s con la cache calda
 

@@ -20,7 +20,7 @@
 | T-07 Provider dati | ✅ fatto | cache su IndexedDB, indicatore di rete |
 | T-08 Anagrafica clienti | ✅ fatta | elenco con saldi, ricerca, creazione |
 | T-09 Coda offline | ✅ fatta | 25 test scritti prima del codice |
-| T-11 Apertura conto | ✅ fatta | home con conti aperti, credito in giro, selettore cliente |
+| T-11 Apertura conto | ✅ fatta | **rifatta il 12 agosto**: la home è la griglia prodotti, i conti aperti sono la striscia in cima |
 | T-12 Righe di conto | ✅ fatta | bozza modificabile, conferma con invio unico (DEC-08) |
 | T-13 Incassa e a credito | ✅ fatto | pannello pagamento, importo parziale, resto, riepilogo di 2 s |
 | T-14 Scheda cliente | ✅ fatta | estratto conto paginato a 30, saldo ancorato a `v_saldo_clienti` |
@@ -28,11 +28,11 @@
 | Scontrini | ✅ fatta | **anticipata dalla Fase 2** su richiesta del titolare |
 | T-16 Listino | 🟨 quasi | prezzi, varianti, preferiti, disattivazione. **Manca il riordino per trascinamento** |
 | T-17 PWA | 🟨 quasi | service worker scritto a mano, pagina offline. **Da provare sui telefoni e con Lighthouse** |
-| T-18 Collaudo | ⬜ prossimo | una settimana dietro il banco, col foglio in parallelo — protocollo e scheda pronti in `08-COLLAUDO.md` |
+| T-18 Collaudo | 🟨 in corso | cominciato. Tre attriti già raccolti e corretti il 12 agosto — vedi il task e `09-DIARIO.md` |
 
-**Fase 0 chiusa.** L'app è pubblicata su Netlify, 158 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
+**Fase 0 chiusa.** L'app è pubblicata su Netlify, 266 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
 
-**Navigazione:** tab bar in basso (04-UX-MOBILE §2) sulle tre schermate principali. La quarta voce, "Altro", arriva con T-16 — è il primo contenuto che ci finirebbe dentro.
+**Navigazione:** tab bar in basso (04-UX-MOBILE §2) sulle schermate principali, banco compreso. Sulla scheda Crediti, al posto della parola, c'è il credito in giro: era il numero grande della vecchia home e non poteva finire dietro un tocco.
 
 **Anticipo dalla Fase 2.** La schermata Scontrini (`/scontrini`, sotto la scheda "Altro") è stata fatta prima di T-19, contro la regola di `CLAUDE.md`. È un anticipo parziale di T-22: mostra che cosa è stato battuto e che cosa no, una giornata alla volta, ma **non** registra la chiusura di cassa né la differenza rilevata — quelle restano a T-22, insieme alle tabelle `movimenti_cassa` e `chiusure_giornaliere` che non esistono ancora. Il resto della Fase 2 non si tocca prima di T-19.
 
@@ -465,7 +465,7 @@ volte.
 
 Fatto quando:
 
-- [ ] Un caffè a un cliente esistente si registra in 3 tap dalla home, cronometrato
+- [ ] Un caffè si registra in **1 tap** dall'apertura dell'app, cronometrato — e in 3 se va a credito a un cliente esistente
 - [ ] L'app si apre in meno di 1,5 s con la cache calda
 - [ ] Una giornata intera in modalità aereo si sincronizza correttamente al ritorno della rete, senza duplicati e senza perdite
 - [ ] Due dispositivi sullo stesso conto non producono incoerenze
@@ -473,6 +473,21 @@ Fatto quando:
 - [ ] È scritta una lista degli attriti riscontrati, con priorità
 
 **Il foglio di carta va tenuto in parallelo per tutta questa settimana.** È l'unico modo per accorgersi di una divergenza prima che diventi un problema con un cliente.
+
+#### Attriti già raccolti e corretti (12 agosto)
+
+Tre segnalazioni dal banco, corrette subito perché toccavano il gesto più frequente della
+giornata. Il ragionamento completo, con la causa vera, sta in `09-DIARIO.md`.
+
+| Attrito | Correzione | Dove |
+|---|---|---|
+| Per battere un prodotto servivano due tap prima di vedere la griglia | La schermata di apertura **è** la griglia, su un conto al banco sempre pronto. Il cliente si chiede alla fine | `04-UX-MOBILE.md` §3 |
+| "Scontrino battuto" finiva sotto la tastiera: per vederlo bisognava scorrere | Due tasti Sì/No da 56 px, prima cosa in cima al pannello, con lo stato scelto evidente | `04-UX-MOBILE.md` §6 |
+| La virgola negli importi era un tasto da sbagliare | Inserimento stile bancomat: le cifre entrano da destra, "250" è 2,50 €. Tastierino nel pannello, niente tastiera di sistema | `04-UX-MOBILE.md` §6.1 |
+
+Sono correzioni di T-18, non anticipi di T-19: non aggiungono funzioni, tolgono attrito da
+funzioni che c'erano già. Il criterio dei tap qui sopra è stato riscritto di conseguenza — la
+versione vecchia misurava la cosa sbagliata.
 
 ---
 

@@ -26,64 +26,84 @@ Tab bar fissa in basso, quattro voci. Niente menu a panino: un menu nascosto cos
 │                                 │
 ├─────────────────────────────────┤
 │  🏠      👥      💰      ⚙️     │
-│ Conti  Clienti Crediti  Altro   │
+│ Banco  Clienti 348,50   Altro   │
 └─────────────────────────────────┘
 ```
 
 | Tab | Contenuto |
 |---|---|
-| **Conti** | Conti aperti adesso. È la schermata di apertura. |
+| **Banco** | Il conto in composizione, con la griglia prodotti. È la schermata di apertura (§3). |
 | **Clienti** | Elenco e ricerca clienti, accesso alle schede. |
 | **Crediti** | Chi deve soldi, ordinato per anzianità del debito. |
 | **Altro** | Listino, cassa (F2), magazzino (F3), impostazioni. |
 
+**Il credito in giro sta sulla scheda Crediti**, al posto della parola "Crediti", in rosso, quando c'è qualcosa da incassare. Era il numero grande della vecchia home; adesso che la home è la griglia dei prodotti non ha più una schermata tutta sua, ma non poteva finire dietro un tocco — è la ragione per cui esiste il progetto. Qui è piccolo e sempre a schermo: la mattina si legge accendendo l'app, senza cercarlo.
+
 ---
 
-## 3. Schermata: Conti aperti (home)
+## 3. Schermata: Banco (home)
+
+**La schermata di apertura è la griglia dei prodotti.** L'app tiene sempre pronto un conto al banco: aperta l'app, il primo tocco è già il prodotto.
 
 ```
 ┌─────────────────────────────────┐
-│ Bar Centrale            ● sync  │
-│                                 │
-│  Credito in giro                │
-│  ┌───────────────────────────┐  │
-│  │      348,50 €             │  │  ← numero grande, tappabile → Crediti
-│  │      12 clienti           │  │
-│  └───────────────────────────┘  │
-│                                 │
-│  CONTI APERTI (3)               │
-│  ┌───────────────────────────┐  │
-│  │ Mario R.          4,80 €  │  │  ← tap → dettaglio conto
-│  │ aperto 12 min fa      3 → │  │
-│  ├───────────────────────────┤  │
-│  │ Giulia          12,00 €   │  │
-│  │ aperto 1 h fa         5 → │  │
-│  ├───────────────────────────┤  │
-│  │ Banco             2,20 €  │  │
-│  │ aperto 2 min fa       2 → │  │
-│  └───────────────────────────┘  │
-│                                 │
-│                         ┌─────┐ │
-│                         │  +  │ │  ← pulsante flottante in basso a destra
-│                         └─────┘ │
+│ [Banco ▾] ●  [Mario  4,80] ┌─┐  │  ← striscia conti, scorrevole  │+│
+│                            └─┘  │
+├─────────────────────────────────┤
+│ Caffè         − 2 +      2,40 € │  ← quello che stai battendo
+│ 1,20 l'uno                      │
+├─────────────────────────────────┤
+│ ┌───┬───┬───┬───┬───┬───┬──▸    │
+│ │Tut│Caf│Acq│Bib│Foo│Bir│       │  ← filtro categorie
+│ └───┴───┴───┴───┴───┴───┴──     │
+│ ┌────────┬────────┬────────┐    │
+│ │ Caffè  │ Caffè  │Cappucc.│    │
+│ │ 1,20 ▾ │macchia.│ 1,70 ▾ │    │  ← la griglia, subito
+│ ├────────┼────────┼────────┤    │
+│ │ Acqua  │ Acqua  │ Pasta  │    │
+│ └────────┴────────┴────────┘    │
+├─────────────────────────────────┤
+│  Totale conto        2,40 €     │
+│ ┌──────────────┬──────────────┐ │
+│ │   INCASSA    │   A CREDITO  │ │
+│ └──────────────┴──────────────┘ │
 ├─────────────────────────────────┤
 │  🏠      👥      💰      ⚙️     │
+│ Banco  Clienti 348,50   Altro   │
 └─────────────────────────────────┘
 ```
 
+### Perché non è più l'elenco dei conti aperti
+
+Lo era, e il conto dei tap tornava: home → **+** (1) → Mario (2) → Caffè (3). Tre tap, come promesso.
+
+Quello che non tornava è **dove** cadevano quei tap. Due dei tre servivano *prima* di poter cominciare, e si pagavano anche quando non c'era nessun nome da mettere — il cliente che paga e se ne va, che è la maggior parte della giornata. Il vincolo dei tre tap era misurato dal punto sbagliato: contava la strada per registrare *a un cliente*, non quella per registrare e basta.
+
+**L'ordine delle domande si è invertito.** Prima: chi è → cosa prende. Adesso: cosa prende → e solo se resta a debito, chi è. Nel bar l'ordinazione arriva prima del nome, e sul foglio di carta — il concorrente — non si scrive un nome prima di segnare un caffè.
+
+Si può fare perché la bozza è locale fino alla conferma (DEC-08): finché non si conferma non c'è nessuna riga registrata a cui stare cambiando l'intestatario.
+
+**Il conto dei tap adesso:**
+
+| Cosa | Tap |
+|---|---|
+| un caffè a chi paga subito | 1 (il prodotto) + INCASSA + CONFERMA |
+| un caffè a Mario, a credito | 1 (il prodotto) + A CREDITO + Mario |
+
 **Comportamenti:**
 
-- I conti sono ordinati dal più recente. Il tempo trascorso è relativo ("12 min fa"), più utile dell'orario.
-- Il conto si apre con un tap sulla riga intera, non su un pulsante piccolo.
-- Il pulsante **+** apre la ricerca cliente (§4).
-- Il riquadro del credito è tappabile e porta alla scheda Crediti.
-- Se non ci sono conti aperti: "Nessun conto aperto — tocca + per aprirne uno", con il **+** evidenziato.
+- Il conto al banco lo crea l'app da sola, se non c'è. È una bozza vuota: non tocca il database e non compare fra i conti aperti finché non ci batti dentro qualcosa.
+- **La striscia in cima** ha preso il posto dell'elenco: i conti aperti a nome di qualcuno sono etichette in fila con il loro totale, si leggono di sfuggita e si aprono con un tocco (§5). Un banco vuoto non compare: non è un conto aperto, è il posto dove si comincia a battere.
+- **La prima etichetta è il conto in corso.** Si tocca per intestarlo a un cliente senza perdere quello che si è già battuto. Se quel cliente ha già un conto aperto, le voci ci confluiscono dentro invece di aprirgliene un secondo.
+- Il **+** apre invece un conto *a parte*, senza toccare quello in corso: serve quando arriva un secondo gruppo mentre stai ancora battendo il primo.
+- La **✕** compare solo quando c'è qualcosa da buttare via, e svuota il conto in corso.
+- **A CREDITO senza cliente non sparisce, chiede a chi.** È l'unico momento in cui il nome serve davvero, ed è lì che si chiede.
 
 ---
 
-## 4. Flusso: aprire un conto (tap 1 e 2)
+## 4. Flusso: "a chi?"
 
-Tap **+** dalla home → si apre un pannello dal basso:
+Il pannello che chiede il cliente sale dal basso. Si apre in tre momenti, e cambia solo cosa si fa con la risposta: dal nome del conto in corso (lo intesta), dal **+** (apre un conto nuovo), da **A CREDITO** su un conto senza cliente (lo intesta e lo chiude).
 
 ```
 ┌─────────────────────────────────┐
@@ -121,7 +141,7 @@ Selezionato il cliente → si apre direttamente il dettaglio conto con la grigli
 
 ---
 
-## 5. Schermata: Dettaglio conto (tap 3 = il prodotto)
+## 5. Schermata: Dettaglio conto
 
 ```
 ┌─────────────────────────────────┐
@@ -157,7 +177,7 @@ Selezionato il cliente → si apre direttamente il dettaglio conto con la grigli
 └─────────────────────────────────┘
 ```
 
-**Il conteggio dei tap:** home → **+** (1) → Mario (2) → Caffè (3). Registrato. Vincolo rispettato.
+È la stessa schermata del banco (§3) con un'altra intestazione: freccia indietro, nome del cliente, quanto deve già. Ci si arriva dalla striscia in cima o dalla scheda cliente.
 
 **Comportamenti:**
 
@@ -204,41 +224,68 @@ Per il conto "Banco", **A CREDITO** non compare: non c'è un cliente a cui addeb
 
 ```
 ┌─────────────────────────────────┐
-│ ─────                           │
-│ Incassa da Mario Rossi          │
-│                                 │
-│ Conto corrente        8,40 €    │
-│ Debito precedente    24,50 €    │
-│ ─────────────────────────────   │
-│ Totale dovuto        32,90 €    │
-│                                 │
-│ ┌───────────────────────────┐   │
-│ │        32,90              │   │  ← precompilato col totale
-│ └───────────────────────────┘   │
-│                                 │
-│  [ Solo il conto: 8,40 € ]      │  ← scorciatoie
-│  [ Tutto: 32,90 € ]             │
-│                                 │
-│ COME                            │
-│ ┌────────┬────────┬────────┐    │
-│ │Contanti│ Carta  │ Altro  │    │
-│ └────────┴────────┴────────┘    │
-│                                 │
-│ ☐ Scontrino battuto             │
-│                                 │
-│ ┌───────────────────────────┐   │
-│ │       CONFERMA            │   │
-│ └───────────────────────────┘   │
+│ ─────                           │  ┐
+│ SCONTRINO BATTUTO?              │  │
+│ ┌─────────────┬───────────────┐ │  │  ferma
+│ │   ✓ SÌ      │      NO       │ │  │  in alto
+│ └─────────────┴───────────────┘ │  │
+│ Quanto ti ha dato               │  │
+│ ┌───────────────────────────┐   │  │
+│ │                    32,90  │   │  │
+│ └───────────────────────────┘   │  ┘
+│ Conto di Mario         8,40 €   │  ┐
+│ Debito precedente     24,50 €   │  │  scorre
+│ Totale dovuto         32,90 €   │  │  solo
+│ [Solo il conto 8,40][Tutto 32,90]  │  questa
+│ [Contanti][ Carta ][ Altro ]    │  ┘
+│ ┌───────┬───────┬───────┐       │  ┐
+│ │   1   │   2   │   3   │       │  │
+│ │   4   │   5   │   6   │       │  │  fermo
+│ │   7   │   8   │   9   │       │  │  in basso
+│ │  00   │   0   │   ⌫   │       │  │
+│ └───────┴───────┴───────┘       │  │
+│ ┌────────┬──────────────────┐   │  │
+│ │Annulla │    CONFERMA      │   │  │
+│ └────────┴──────────────────┘   │  ┘
 └─────────────────────────────────┘
 ```
+
+### Tre fasce, e una regola sola: non si scorre per confermare
+
+In alto e ferma la scelta dello scontrino e l'importo — quello che devi vedere mentre digiti. In basso e fermo il tastierino con CONFERMA — tutto quello che il pollice deve raggiungere. In mezzo, e solo in mezzo, la parte che eventualmente scorre. Su un telefono normale non scorre niente.
+
+**Niente tastiera di sistema.** Si mangiava metà schermo, e in un pannello dove bisogna anche vedere il dovuto, scegliere il metodo e arrivare a CONFERMA quella metà voleva dire scorrere *con la tastiera aperta*: il gesto più scomodo che ci sia con una mano sola. E i suoi tasti sono piccoli, perché sono fatti per scrivere parole. Qui servono dieci cifre, e servono grandi.
+
+**Lo scontrino è due tasti, non una spunta, ed è la prima cosa in alto.** Una spunta in mezzo al pannello finiva fuori schermo con la tastiera aperta, e una spunta che non si vede è una spunta che nessuno controlla. Il tasto scelto è pieno di colore e porta il segno di spunta — in penombra due tinte si confondono, un ✓ no. Resta la memoria dell'ultima scelta, perché al banco è quasi sempre la stessa: la differenza è che ora la scelta ricordata **si vede**.
 
 **Dettagli:**
 
 - Il campo importo è **modificabile**: il cliente può dare 20 € su 32,90 di debito. Il resto rimane a saldo.
+- È precompilato col dovuto, e **il primo tocco sul tastierino lo azzera**: chi tocca una cifra sta dicendo "non è questa la somma". Se le cifre si aggiungessero in coda, un tocco distratto trasformerebbe 32,90 in 329,00.
 - Le due scorciatoie coprono i casi reali: "pago quello di adesso" e "salda tutto".
 - Se l'importo inserito supera il dovuto, l'app mostra il resto da dare: "Resto: 7,10 €". Non lo registra come credito del cliente a meno che non si scelga esplicitamente "lascia come acconto".
-- Dopo la conferma: schermata di riepilogo per 2 secondi con il nuovo saldo, poi ritorno alla home. Il barista deve vedere il risultato senza dover cercare.
-- La spunta "scontrino battuto" ricorda l'ultima scelta fatta, perché nella pratica è quasi sempre la stessa.
+- Dopo la conferma: schermata di riepilogo per 2 secondi con il nuovo saldo. Dal dettaglio si torna indietro; dal banco non si va da nessuna parte — il conto successivo è già pronto e la griglia riappare.
+
+Stessa disposizione nel pannello d'incasso della scheda cliente (§8) e stesso tastierino nella chiusura di turno: due pannelli che fanno la stessa cosa devono avere i comandi nello stesso posto, altrimenti la memoria del pollice si confonde proprio quando serve.
+
+---
+
+## 6.1 Come si scrivono gli importi
+
+**Le cifre entrano da destra, come su un bancomat. La virgola non si digita mai.**
+
+```
+ 2      →   0,02
+ 25     →   0,25
+ 250    →   2,50
+ 25000  → 250,00
+```
+
+Al banco la virgola è un tasto sbagliato: si digita con una mano sola, spesso bagnata, e premuta o dimenticata per sbaglio sposta un importo di un fattore cento senza che nessuno se ne accorga. Togliendola, il valore in lavorazione è **sempre un intero di centesimi**: non esiste lo stato intermedio "testo che forse è un numero", quindi non esiste il momento in cui l'importo è ambiguo.
+
+La regola vale **su tutti i campi importo dell'app**, tastierino o tastiera di sistema che sia — anche sui prezzi del listino, dove si scrive con calma. Se "250" valesse 2,50 € in una schermata e 250,00 € in un'altra, l'ambiguità che questa regola toglie di mezzo tornerebbe dentro dalla porta di servizio.
+
+Le funzioni sono in `lib/dominio/denaro.ts` (`digitaCifre`, `cancellaCifra`, `cifreInCentesimi`, `mascheraImporto`) e hanno 16 test. `parseEuro` resta per leggere testo già scritto, non per l'inserimento.
 
 ---
 
@@ -344,7 +391,7 @@ Si usa raramente, quindi non deve essere veloce — deve essere chiara.
 
 | Situazione | Cosa vede l'utente |
 |---|---|
-| Nessun conto aperto | "Nessun conto aperto — tocca **+** per iniziare" |
+| Banco vuoto | Nessun messaggio: c'è la griglia, e si comincia toccando un prodotto |
 | Nessun credito | "Nessuno ti deve soldi. 🎉" |
 | Nessun cliente registrato | "Ancora nessun cliente — creane uno aprendo un conto" |
 | Offline, coda vuota | punto ambra, "Senza rete" |

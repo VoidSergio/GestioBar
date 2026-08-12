@@ -11,7 +11,9 @@ Gestionale per un bar, mobile-first, in italiano. Serve a sapere con certezza **
 
 Stack: Next.js 16 (App Router, Turbopack) + TypeScript strict + Supabase + TanStack Query + Tailwind 4.
 
-**Stato:** Fase 0 chiusa, app pubblicata su Netlify. Fatti T-06 (accesso), T-07 (cache offline), T-08 (clienti), T-09 (coda), T-10 (griglia), T-11 (apertura conto), T-12 (righe), T-13 (chiusura conto), T-14 (scheda cliente), T-15 (crediti), T-16 (listino), T-17 (PWA), più **T-20 e T-22** (chiusura di turno) anticipati dalla Fase 2 — il perché è scritto in `05-ROADMAP.md`. 63 prodotti a catalogo, 237 test verdi. Il giro completo funziona. Il prossimo task è **T-18**, il collaudo sul campo: protocollo e scheda di carta in `docs/08-COLLAUDO.md`.
+**Stato:** Fase 0 chiusa, app pubblicata su Netlify. Fatti T-06 (accesso), T-07 (cache offline), T-08 (clienti), T-09 (coda), T-10 (griglia), T-11 (apertura conto), T-12 (righe), T-13 (chiusura conto), T-14 (scheda cliente), T-15 (crediti), T-16 (listino), T-17 (PWA), più **T-20 e T-22** (chiusura di turno) anticipati dalla Fase 2 — il perché è scritto in `05-ROADMAP.md`. 63 prodotti a catalogo, 266 test verdi. Il giro completo funziona. **T-18 è cominciato**: le prime tre correzioni dal banco sono in `09-DIARIO.md` alla data del 12 agosto.
+
+**La schermata di apertura è la griglia prodotti**, non l'elenco dei conti. L'app tiene sempre pronto un conto al banco (`useBanco` in `lib/hooks/use-bozze.ts`): aperta l'app, il primo tocco è il prodotto. Il cliente si chiede alla fine, e solo se il conto resta a debito. I conti aperti stanno nella striscia in cima. Il perché sta in `04-UX-MOBILE.md` §3 — non è un dettaglio estetico, è il vincolo dei tap misurato dal punto giusto.
 
 **Prima di scrivere SQL:** `npm run verifica:migrazioni` esegue tutte le migrazioni su un Postgres in WebAssembly e controlla che facciano quello che dicono. Una migrazione non si incolla in produzione senza averla vista girare — l'8 agosto ha trovato un pagamento perso che nessuno aveva visto leggendo il file.
 
@@ -57,7 +59,8 @@ Prima di scrivere codice: `npm test`, `npm run verifica:denaro`, `npm run lint` 
 
 - Tutti gli importi sono **interi in centesimi**. Mai `float`, mai `numeric` per il denaro.
 - `/ 100` compare in **un solo punto** del codice: dentro `formatEuro` in `lib/dominio/denaro.ts`. Se lo scrivi altrove, stai introducendo un bug.
-- Ogni importo che entra o esce dall'interfaccia passa da `parseEuro` o `formatEuro`.
+- Ogni importo che esce verso l'interfaccia passa da `formatEuro` (o `centesimiInCampo` dentro un campo).
+- **Gli importi si digitano stile bancomat: le cifre entrano da destra e la virgola non si scrive mai.** "250" vale 2,50 €. Vale su *tutti* i campi importo, tastierino o tastiera di sistema — se una schermata leggesse "250" diversamente da un'altra, l'ambiguità tornerebbe dentro. Funzioni: `digitaCifre`, `cancellaCifra`, `cifreInCentesimi`, `mascheraImporto`. `parseEuro` serve a leggere testo già scritto, **non** all'inserimento.
 
 ### Dati
 
@@ -72,6 +75,7 @@ Prima di scrivere codice: `npm test`, `npm run verifica:denaro`, `npm run lint` 
 - Bersaglio di tocco minimo **56×56 px** per le azioni frequenti.
 - Testo mai sotto **16 px**, importi a 20 px o più.
 - Azioni principali nella **metà bassa** dello schermo.
+- **Non si scorre per confermare.** Prima di mettere `autoFocus` su un campo dentro un pannello, guarda cosa copre la tastiera quando si apre: se copre l'azione principale, il pannello è sbagliato. Dove si digitano importi la tastiera di sistema non si usa affatto — c'è `components/comune/tastierino.tsx`.
 - Ogni azione dell'utente aggiorna lo schermo **prima** di parlare con il server (aggiornamento ottimistico). L'utente non aspetta mai la rete.
 - **Ogni schermata deve funzionare senza rete** o dire chiaramente perché non può. Le eccezioni sono elencate in `03-ARCHITETTURA.md` §4.5.
 - Messaggi di errore in italiano comprensibile. Mai codici tecnici, mai "Qualcosa è andato storto".

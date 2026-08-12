@@ -272,3 +272,75 @@ quanto vorrei. A T-40, quando le policy si stringeranno per ruolo, va tolta la d
 un'impostazione della dashboard.
 
 ---
+
+## 12 agosto 2026 — il vincolo dei tre tap era misurato dal punto sbagliato
+
+**Cosa si è visto.** Prima segnalazione dal banco: *«devo poter selezionare i prodotti appena
+apro l'app»*. Detta come lamentela sulla lentezza, ma l'app non era lenta a rispondere: era
+lenta ad **arrivare**. Aperta, mostrava l'elenco dei conti aperti; per battere un caffè servivano
+il **+**, poi il cliente, poi il prodotto.
+
+**Perché.** Il conto dei tap tornava — `04-UX-MOBILE.md` §3 e §5 lo verificavano riga per riga,
+tre tap, vincolo rispettato — ma contava la cosa sbagliata. Misurava la strada per registrare
+*a un cliente*, e la trattava come se fosse la strada per registrare. Sono due cose diverse, e
+quella frequente è la seconda: uno che paga e se ne va non ha bisogno di essere nessuno. Due
+tap su tre servivano a rispondere a una domanda — "a chi?" — che nella maggior parte della
+giornata non ha risposta e non serve.
+
+L'errore non è nel numero, è nel punto da cui si è cominciato a contare. Un criterio verificabile
+può essere verificato benissimo e misurare la cosa sbagliata; nessun controllo automatico se ne
+accorge, perché il criterio passa.
+
+Sotto c'era anche un'inversione di ordine presa dal software e non dal mestiere: in un bar
+l'ordinazione arriva prima del nome. Sul foglio di carta — che `CLAUDE.md` indica come il vero
+concorrente — non si scrive un nome prima di segnare un caffè.
+
+**Cosa si è fatto.** La schermata di apertura è diventata la griglia prodotti su un conto al
+banco sempre pronto; l'elenco dei conti aperti è diventato una striscia di etichette in cima. Il
+"a chi?" si chiede alla fine, e solo quando il conto resta a debito. Si è potuto fare senza
+toccare niente di registrato perché la bozza è locale fino alla conferma (DEC-08): cambiare
+intestatario a metà strada non riscrive nessuna riga.
+
+**La regola.** Un criterio che conta i tap deve dire **da dove si comincia a contare e in quale
+caso**. "Tre tap per registrare un caffè" non è un criterio finché non si specifica se quel
+caffè va a qualcuno. E quando un flusso chiede un dato, la domanda da farsi non è "quanto costa
+chiederlo" ma "in quale frazione dei casi serve": un dato che serve nel dieci per cento delle
+volte non si chiede all'inizio.
+
+---
+
+## 12 agosto 2026 — la spunta dello scontrino stava dove nessuno la guardava
+
+**Cosa si è visto.** Seconda segnalazione dallo stesso giro: *«il tasto incassa mi deve far
+scorrere verso giù per vedere la scritta scontrino battuto»*.
+
+**Perché.** La casella "scontrino battuto" stava in mezzo al pannello di pagamento, sotto il
+campo dell'importo. Il campo aveva `autoFocus`, quindi la tastiera di sistema si apriva da sola e
+si prendeva metà schermo: la spunta finiva sotto la tastiera, e con lei CONFERMA. Per arrivarci
+bisognava scorrere **con la tastiera aperta**, che con una mano sola e le dita bagnate è il
+gesto peggiore che ci sia.
+
+La spunta ricordava l'ultima scelta (`04-UX-MOBILE.md` §6), cosa giusta e voluta. Ma ricordata e
+invisibile insieme fanno un guaio: la scelta resta quella dell'ultima volta e nessuno la
+controlla, perché per controllarla bisogna andare a cercarla. Una preferenza ricordata deve
+essere **più** visibile di una da scegliere ogni volta, non meno.
+
+Errore di disegno a monte, e vale la pena scriverlo: si era ottimizzato il numero di tocchi
+(zero, la spunta è ricordata) ignorando il costo di **vedere**. Un comando che non costa tocchi
+ma costa uno scorrimento per essere letto non è gratis.
+
+**Cosa si è fatto.** La scelta è diventata due tasti Sì/No da 56 px, prima cosa in cima al
+pannello, quello scelto pieno di colore e con un ✓ — in penombra due tinte si confondono, un
+segno di spunta no. La memoria dell'ultima scelta resta, ma adesso si vede.
+
+La tastiera di sistema è sparita del tutto: al suo posto un tastierino di dodici tasti dentro il
+pannello (`components/comune/tastierino.tsx`). Il pannello è in tre fasce — scontrino e importo
+fermi in alto, tastierino e CONFERMA fermi in basso, informazioni in mezzo: l'unica parte che
+può scorrere. La regola di disegno è una sola: **non si scorre per confermare.**
+
+**La regola.** Prima di dare `autoFocus` a un campo dentro un pannello, guardare cosa copre la
+tastiera quando si apre. Se copre l'azione principale, il pannello è sbagliato — non l'autofocus.
+E una preferenza ricordata va messa dove si legge senza cercarla, altrimenti smette di essere una
+preferenza e diventa un valore predefinito che nessuno rivede.
+
+---
