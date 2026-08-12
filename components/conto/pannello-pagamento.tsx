@@ -44,6 +44,8 @@ interface Props {
   haCliente: boolean;
   inCorso: boolean;
   onChiudi: () => void;
+  /** Apre "a chi?" senza chiudere il pannello. */
+  onCambiaCliente: () => void;
   onConferma: (dati: {
     importoCent: number;
     metodo: string;
@@ -60,21 +62,29 @@ export function PannelloPagamento({
   haCliente,
   inCorso,
   onChiudi,
+  onCambiaCliente,
   onConferma,
 }: Props) {
   const dovutoCent = totaleContoCent + debitoPrecedenteCent;
 
-  // Precompilato con il dovuto: il caso più frequente è "paga tutto".
-  const [importoCent, setImporto] = useState(() => Math.max(dovutoCent, 0));
   /**
-   * Il primo tocco sul tastierino cancella il precompilato.
+   * Quello che è stato digitato — `null` finché nessuno ha toccato niente.
    *
-   * Chi tocca una cifra sta dicendo "non è questa la somma": ricominciare da
-   * zero è l'unica lettura sensata. Se invece le cifre si aggiungessero in
-   * coda a 32,90, un tap distratto trasformerebbe trentadue euro in
-   * trecentoventinove.
+   * PERCHÉ NON SI PARTE DAL DOVUTO GIÀ DENTRO. Finché nessuno digita,
+   * l'importo *è* il dovuto: non una copia presa al momento dell'apertura,
+   * ma il dovuto di adesso. Serve perché il conto può cambiare sotto — si
+   * intesta il conto a qualcuno con il pannello aperto e al totale si
+   * aggiunge il debito che quella persona si trascina. Con una copia si
+   * resterebbe fermi alla cifra di prima, e si chiederebbe meno del dovuto.
+   *
+   * PERCHÉ IL PRIMO TOCCO AZZERA. Chi tocca una cifra sta dicendo "non è
+   * questa la somma": ricominciare da zero è l'unica lettura sensata. Se le
+   * cifre si aggiungessero in coda a 32,90, un tocco distratto
+   * trasformerebbe trentadue euro in trecentoventinove.
    */
-  const [modificato, setModificato] = useState(false);
+  const [digitato, setDigitato] = useState<number | null>(null);
+  const modificato = digitato !== null;
+  const importoCent = digitato ?? Math.max(dovutoCent, 0);
   const [metodo, setMetodo] = useState('contanti');
   const [scontrino, setScontrino] = useScontrino();
   const [errore, setErrore] = useState<string | null>(null);
@@ -98,20 +108,17 @@ export function PannelloPagamento({
 
   function digita(cifre: string) {
     setErrore(null);
-    setImporto((attuale) => digitaCifre(modificato ? attuale : 0, cifre));
-    setModificato(true);
+    setDigitato((attuale) => digitaCifre(attuale ?? 0, cifre));
   }
 
   function cancella() {
     setErrore(null);
-    setImporto((attuale) => (modificato ? cancellaCifra(attuale) : 0));
-    setModificato(true);
+    setDigitato((attuale) => (attuale === null ? 0 : cancellaCifra(attuale)));
   }
 
   function scegliScorciatoia(importo: number) {
     setErrore(null);
-    setImporto(importo);
-    setModificato(true);
+    setDigitato(importo);
   }
 
   function conferma() {
@@ -150,20 +157,45 @@ export function PannelloPagamento({
 
           <SceltaScontrino valore={scontrino} onCambia={setScontrino} />
 
-          <div className="mt-3 flex items-end justify-between gap-3">
-            <span className="pb-1 text-sm text-[var(--color-testo-tenue)]">Quanto ti ha dato</span>
-            {!modificato && (
-              <span className="pb-1 text-xs text-[var(--color-testo-tenue)]">
-                tocca una cifra per cambiarlo
+          {/* Chi paga si può cambiare anche qui.
+              Un conto battuto al banco non ha un nome, e va benissimo finché
+              lo si incassa e basta. Ma se quello davanti è un cliente
+              abituale — perché lascia un pezzo, perché ha un debito vecchio
+              da coprire, o solo perché la consumazione deve restare nella sua
+              storia — il nome serve *adesso*, non prima di battere il caffè.
+              Chiederlo qui costa un tocco a chi ne ha bisogno, e zero a
+              tutti gli altri. */}
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-sm text-[var(--color-testo-tenue)]">Quanto ti ha dato</span>
+            <button
+              type="button"
+              onClick={onCambiaCliente}
+              aria-label={
+                haCliente ? `Paga ${nomeCliente}. Tocca per cambiare` : 'Intesta a un cliente'
+              }
+              className={`flex h-11 max-w-[60%] shrink-0 items-center gap-1.5 rounded-lg px-3 text-sm ${
+                haCliente
+                  ? 'bg-[var(--color-superficie-alta)] font-semibold'
+                  : 'border border-[var(--color-bordo)] text-[var(--color-testo-tenue)]'
+              }`}
+            >
+              <span className="truncate">{haCliente ? nomeCliente : 'Chi paga?'}</span>
+              <span aria-hidden className="text-xs text-[var(--color-testo-tenue)]">
+                ▾
               </span>
-            )}
+            </button>
           </div>
           <output
             aria-live="polite"
             aria-label="Importo ricevuto"
-            className="mt-1 flex h-16 items-center justify-end rounded-xl border border-[var(--color-accento)] bg-[var(--color-sfondo)] px-4 text-3xl font-bold tabular-nums"
+            className="mt-1 flex h-16 items-center justify-between gap-3 rounded-xl border border-[var(--color-accento)] bg-[var(--color-sfondo)] px-4"
           >
-            {centesimiInCampo(importoCent)}
+            <span className="text-xs text-[var(--color-testo-tenue)]">
+              {modificato ? '' : 'tocca una cifra per cambiarlo'}
+            </span>
+            <span className="text-3xl font-bold tabular-nums">
+              {centesimiInCampo(importoCent)}
+            </span>
           </output>
         </div>
 
@@ -173,7 +205,7 @@ export function PannelloPagamento({
           <div className="mt-3 rounded-xl bg-[var(--color-sfondo)] px-4 py-2.5 text-sm">
             <p className="flex justify-between">
               <span className="text-[var(--color-testo-tenue)]">
-                Conto di {nomeCliente}
+                {haCliente ? `Conto di ${nomeCliente}` : 'Conto'}
               </span>
               <span className="tabular-nums">{formatEuro(totaleContoCent)}</span>
             </p>
