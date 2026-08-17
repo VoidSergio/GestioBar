@@ -32,6 +32,9 @@ const VOCI = [
   { href: '/altro', icona: '⚙️', etichetta: 'Altro' },
 ] as const;
 
+/** Quello che si raggiunge da "Altro" e che deve tenerne accesa la scheda. */
+const SOTTO_ALTRO = ['/scontrini', '/listino', '/turno', '/report'] as const;
+
 export function BarraNavigazione() {
   const percorso = usePathname();
   const { data: clienti } = useClienti();
@@ -48,9 +51,12 @@ export function BarraNavigazione() {
     >
       <ul className="flex">
         {VOCI.map((v) => {
-          // /scontrini sta dentro Altro: la scheda deve restare accesa,
+          // Le schermate di secondo livello (scontrini, listino, turno,
+          // report) stanno dentro Altro: la scheda deve restare accesa,
           // altrimenti sembra di essere usciti dalla sezione.
-          const attiva = percorso === v.href || (v.href === '/altro' && percorso === '/scontrini');
+          const attiva =
+            percorso === v.href ||
+            (v.href === '/altro' && SOTTO_ALTRO.some((p) => percorso.startsWith(p)));
           const conCredito = v.href === '/crediti' && credito > 0;
 
           return (

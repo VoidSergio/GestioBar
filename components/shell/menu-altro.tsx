@@ -9,9 +9,9 @@ import { PulsanteEsci } from './pulsante-esci';
  * La quarta scheda (04-UX-MOBILE.md §2): listino, cassa, magazzino,
  * impostazioni.
  *
- * Oggi contiene solo gli Scontrini. Le voci non ancora fatte compaiono
- * spente, con scritto quando arrivano: è meglio di un elenco che si allunga
- * a sorpresa, e di una scheda che sembra vuota senza spiegare perché.
+ * Le voci non ancora fatte compaiono spente, con scritto quando arrivano: è
+ * meglio di un elenco che si allunga a sorpresa, e di una scheda che sembra
+ * vuota senza spiegare perché.
  */
 
 const VOCI = [
@@ -32,6 +32,12 @@ const VOCI = [
     icona: '💶',
     titolo: 'Chiudi turno',
     descrizione: 'Conta il cassetto, ritira, lascia il fondo',
+  },
+  {
+    href: '/report',
+    icona: '📈',
+    titolo: 'Report',
+    descrizione: 'Quanto è entrato, cosa esce, chi consuma, a che ora',
   },
 ] as const;
 
