@@ -4,8 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { descriviSaldo, formatEuro, statoSaldo } from '@/lib/dominio/denaro';
 import { etichettaCliente, type Ruolo } from '@/lib/dominio/clienti';
-import { conSaldoProgressivo, raggruppaPerGiorno } from '@/lib/dominio/crediti';
-import { PAGINA_MOVIMENTI, useCliente, useEstrattoConto } from '@/lib/hooks/use-cliente';
+import { conSaldoProgressivo, oraDelMovimento, raggruppaPerGiorno } from '@/lib/dominio/crediti';
+import {
+  PAGINA_MOVIMENTI,
+  useCliente,
+  useEstrattoConto,
+  useEstrattoDelGiorno,
+} from '@/lib/hooks/use-cliente';
 import { useApriConto } from '@/lib/hooks/use-bozze';
 import { IndicatoreSync } from '@/components/shell/indicatore-sync';
 import { AvvisoLettura } from '@/components/shell/avviso-lettura';
@@ -13,6 +18,7 @@ import { PannelloIncasso } from './pannello-incasso';
 import { PannelloRimozione } from './pannello-rimozione';
 import { PannelloSpostamento } from './pannello-spostamento';
 import { pezziSpostabili, type RigaSpostabile } from '@/lib/dominio/spostamenti';
+import { comeGiorno } from '@/lib/dominio/report';
 import type { MovimentoConSaldo } from '@/lib/dominio/crediti';
 
 export function SchedaCliente({ id, ruolo }: { id: string; ruolo: Ruolo | null }) {
@@ -33,6 +39,15 @@ export function SchedaCliente({ id, ruolo }: { id: string; ruolo: Ruolo | null }
   const [esito, setEsito] = useState<string | null>(null);
   const [congedo, setCongedo] = useState<string | null>(null);
   const [daSpostare, setDaSpostare] = useState<RigaSpostabile | null>(null);
+  /**
+   * Un giorno solo, invece dello scorrimento all'indietro (T-27).
+   *
+   * Serve quando qualcuno chiede "ma giovedì che cosa ho preso?": paginare
+   * trenta righe per volta fino ad arrivarci sono venti tocchi su un cliente
+   * abituale.
+   */
+  const [giornoScelto, setGiornoScelto] = useState<string | null>(null);
+  const delGiorno = useEstrattoDelGiorno(id, giornoScelto);
 
   // Tolto il cliente, questa schermata non ha più un soggetto: si dice com'è
   // andata e si torna all'elenco, invece di mostrare "cliente non trovato".
@@ -55,6 +70,16 @@ export function SchedaCliente({ id, ruolo }: { id: string; ruolo: Ruolo | null }
     () => raggruppaPerGiorno(conSaldoProgressivo(movimenti ?? [], cliente?.saldo_cent ?? 0)),
     [movimenti, cliente?.saldo_cent],
   );
+
+  /**
+   * Guardando un giorno solo il saldo progressivo **non si mostra**, e non è
+   * una semplificazione: `conSaldoProgressivo` parte dal saldo di adesso e
+   * torna indietro, quindi vale solo se le righe in mano sono le più
+   * recenti. Ancorarlo a un giovedì di tre settimane fa darebbe una colonna
+   * di numeri plausibili e tutti sbagliati. Al suo posto va l'ora, che è
+   * poi quello che si sta cercando.
+   */
+  const righeDelGiorno = delGiorno.data ?? [];
 
   if (congedo) {
     return (
@@ -184,11 +209,79 @@ export function SchedaCliente({ id, ruolo }: { id: string; ruolo: Ruolo | null }
       </div>
 
       <section className="mt-6 flex-1">
-        <h2 className="px-5 pb-2 text-sm font-semibold text-[var(--color-testo-tenue)]">
-          MOVIMENTI
-        </h2>
+        <div className="flex items-center justify-between gap-3 px-5 pb-2">
+          <h2 className="text-sm font-semibold text-[var(--color-testo-tenue)]">
+            {giornoScelto ? 'QUEL GIORNO' : 'MOVIMENTI'}
+          </h2>
 
-        {error || inPausa ? (
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={giornoScelto ?? ''}
+              max={comeGiorno(new Date())}
+              onChange={(e) => setGiornoScelto(e.target.value || null)}
+              aria-label="Guarda un giorno solo"
+              className="h-11 rounded-lg border border-[var(--color-bordo)] bg-[var(--color-sfondo)] px-2 text-sm"
+            />
+            {giornoScelto && (
+              <button
+                type="button"
+                onClick={() => setGiornoScelto(null)}
+                aria-label="Torna a tutti i movimenti"
+                className="h-11 w-11 shrink-0 rounded-lg border border-[var(--color-bordo)] text-[var(--color-testo-tenue)]"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
+
+        {giornoScelto ? (
+          delGiorno.isPending ? (
+            <div className="space-y-2 px-5" aria-busy="true">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-12 animate-pulse rounded-lg bg-[var(--color-superficie)]" />
+              ))}
+            </div>
+          ) : delGiorno.error ? (
+            <AvvisoLettura
+              errore={delGiorno.error}
+              cosa="Quel giorno"
+              rassicurazione="Il saldo qui sopra è comunque aggiornato."
+              onRiprova={() => void delGiorno.refetch()}
+            />
+          ) : righeDelGiorno.length === 0 ? (
+            <p className="px-8 py-8 text-center text-sm text-[var(--color-testo-tenue)]">
+              Quel giorno non è passato.
+            </p>
+          ) : (
+            <ul className="divide-y divide-[var(--color-bordo)] border-y border-[var(--color-bordo)]">
+              {righeDelGiorno.map((m) => (
+                <li key={m.movimento_id} className="flex items-baseline gap-3 px-5 py-3">
+                  <span className="w-12 shrink-0 text-xs tabular-nums text-[var(--color-testo-tenue)]">
+                    {oraDelMovimento(m.data)}
+                  </span>
+                  <span
+                    className={`min-w-0 flex-1 truncate text-sm ${
+                      m.e_storno ? 'text-[var(--color-testo-tenue)] line-through' : ''
+                    }`}
+                  >
+                    {m.descrizione}
+                    {m.quantita > 1 && ` \u00d7${m.quantita}`}
+                  </span>
+                  <span
+                    className={`shrink-0 tabular-nums ${
+                      m.tipo === 'pagamento' ? 'font-semibold text-[var(--color-positivo)]' : ''
+                    }`}
+                  >
+                    {formatEuro(m.importo_cent)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : error || inPausa ? (
           <AvvisoLettura
             errore={error}
             cosa="Lo storico"
@@ -220,7 +313,7 @@ export function SchedaCliente({ id, ruolo }: { id: string; ruolo: Ruolo | null }
           ))
         )}
 
-        {ceAltro && (
+        {ceAltro && !giornoScelto && (
           <div className="px-5 py-5">
             <button
               type="button"

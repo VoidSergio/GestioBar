@@ -115,6 +115,23 @@ export function raggruppaPerGiorno(
 }
 
 /**
+ * L'ora di un movimento, `07:32`.
+ *
+ * Serve quando si guarda un giorno solo (T-27): lì la domanda non è più
+ * "quanto deve" ma "che cosa ha preso, e quando" — il caffè delle sette e
+ * quello delle undici raccontano due abitudini diverse, e in caso di
+ * contestazione l'ora è l'unica cosa che decide.
+ *
+ * Ore e minuti locali, senza secondi: il secondo esatto non serve a nessuno
+ * e allunga una colonna che sta in uno schermo stretto.
+ */
+export function oraDelMovimento(data: string): string {
+  const d = new Date(data);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+/**
  * Le due scorciatoie del pannello incasso.
  *
  * "Tutto" è il saldo intero; "solo l'ultimo conto" esiste soltanto se c'è

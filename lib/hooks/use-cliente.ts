@@ -68,6 +68,41 @@ export function useEstrattoConto(clienteId: string, quanti = PAGINA_MOVIMENTI) {
   });
 }
 
+/**
+ * I movimenti di un cliente in un giorno solo (T-27).
+ *
+ * Serve quando qualcuno chiede "ma giovedì che cosa ho preso?". Paginare
+ * all'indietro trenta righe per volta fino ad arrivarci è la strada lunga, e
+ * su un cliente abituale sono venti tocchi.
+ *
+ * L'intervallo si costruisce sui confini locali del giorno e si passa al
+ * database come istanti: il fuso lo mette il browser, che è dove sta la
+ * persona che ha scritto la data.
+ */
+export function useEstrattoDelGiorno(clienteId: string, giorno: string | null) {
+  return useQuery({
+    queryKey: ['estratto-giorno', clienteId, giorno],
+    enabled: giorno !== null,
+    queryFn: async (): Promise<MovimentoEstrattoConto[]> => {
+      const [anno, mese, di] = (giorno ?? '').split('-').map(Number);
+      const inizio = new Date(anno ?? 0, (mese ?? 1) - 1, di ?? 1, 0, 0, 0, 0);
+      const fine = new Date(anno ?? 0, (mese ?? 1) - 1, (di ?? 1) + 1, 0, 0, 0, 0);
+
+      const { data, error } = await supabaseBrowser()
+        .from('v_estratto_conto')
+        .select('*')
+        .eq('cliente_id', clienteId)
+        .gte('data', inizio.toISOString())
+        .lt('data', fine.toISOString())
+        .order('data', { ascending: true });
+
+      if (error) throw new ErroreLettura(error.message, error.code);
+      return (data ?? []) as MovimentoEstrattoConto[];
+    },
+    staleTime: 60 * 1000,
+  });
+}
+
 export interface DatiIncasso {
   clienteId: string;
   importoCent: number;

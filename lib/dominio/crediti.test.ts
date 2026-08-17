@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  oraDelMovimento,
   conSaldoProgressivo,
   etichettaGiorno,
   raggruppaPerGiorno,
@@ -456,5 +457,20 @@ describe('numeroPerWhatsApp', () => {
     expect(numeroPerWhatsApp(null)).toBeNull();
     expect(numeroPerWhatsApp('boh')).toBeNull();
     expect(numeroPerWhatsApp('123')).toBeNull();
+  });
+});
+
+describe('oraDelMovimento', () => {
+  it('scrive ore e minuti locali, con lo zero davanti', () => {
+    expect(oraDelMovimento(new Date(2026, 7, 12, 7, 5).toISOString())).toBe('07:05');
+    expect(oraDelMovimento(new Date(2026, 7, 12, 18, 40).toISOString())).toBe('18:40');
+  });
+
+  it('niente secondi: allungherebbero una colonna stretta senza servire', () => {
+    expect(oraDelMovimento(new Date(2026, 7, 12, 7, 5, 33).toISOString())).toBe('07:05');
+  });
+
+  it('una data illeggibile non diventa NaN a schermo', () => {
+    expect(oraDelMovimento('boh')).toBe('');
   });
 });
