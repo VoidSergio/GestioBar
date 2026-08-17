@@ -111,6 +111,7 @@ Sono tutte idempotenti: rieseguirne una che c'è già non rompe niente.
 | `0016_cassa_turni.sql` | `impostazioni`, `chiusure_turno`, viste del turno | Chiudi turno |
 | `0017_correzione_scontrino.sql` | correzione della spunta scontrino, riservata al titolare | Scontrini |
 | `0018_report.sql` | **quattro viste, nessuna tabella** | schermata Report |
+| `0019_ruoli.sql` | ruoli, firma automatica delle righe, viste per operatore | Persone, e chi vede cosa |
 
 **`0018` è quella nuova.** Finché non viene eseguita, la schermata Report dice che non riesce a
 leggere: non rompe nient'altro, perché non tocca nessuna tabella e nessuna schermata esistente.
@@ -169,6 +170,78 @@ select * from v_saldo_clienti;            -- 0 righe, nessun errore
 E in **Table Editor** devi vedere sette tabelle, ciascuna con l'etichetta **RLS enabled**.
 
 Se una tabella non ce l'ha, il blocco §3.9 non è passato: rilancialo.
+
+---
+
+## 5.2 Provare i permessi — **da fare prima di dare un accesso a qualcuno**
+
+`npm run verifica:migrazioni` gira su un Postgres in memoria dove i ruoli e `auth.uid()` sono
+finti: verifica schema, vincoli, trigger e viste, ma **non la Row Level Security**. Le policy si
+provano solo qui, sul progetto vero, e vanno provate — un permesso troppo largo non dà nessun
+errore, funziona e basta.
+
+### Come si finge di essere un barista
+
+Nel **SQL Editor**, prendi l'id di chi vuoi impersonare e apri una transazione che si annulla da
+sola. Niente di quello che c'è dentro resta.
+
+```sql
+-- l'id lo trovi con:  select id, nome, ruolo from profili;
+begin;
+  set local role authenticated;
+  set local request.jwt.claims = '{"sub":"METTI-QUI-L-ID-DEL-BARISTA","role":"authenticated"}';
+
+  -- 1. deve vedere il listino
+  select count(*) from prodotti;                 -- atteso: 63
+
+  -- 2. NON deve poterlo cambiare
+  update prodotti set prezzo_cent = 999;         -- atteso: 0 righe toccate
+
+  -- 3. deve vedere i saldi: senza, non può decidere se dare credito
+  select count(*) from v_saldo_clienti;          -- atteso: > 0
+
+  -- 4. NON deve vedere i report
+  select count(*) from v_giornata;               -- atteso: 0
+  select count(*) from v_classifica_clienti;     -- atteso: 0
+  select count(*) from v_venduto_prodotto;       -- atteso: 0
+  select count(*) from v_operatore_giornata;     -- atteso: 0
+
+  -- 5. NON deve potersi promuovere
+  update profili set ruolo = 'titolare'
+   where id = 'METTI-QUI-L-ID-DEL-BARISTA';      -- atteso: errore o 0 righe
+rollback;
+```
+
+**Se il punto 2 tocca una riga, o se il punto 4 restituisce più di zero, la migrazione `0019` non
+è stata eseguita.** Rieseguila e riprova: è idempotente.
+
+### Quello che questi controlli non dimostrano
+
+Un barista **può leggere `righe_conto` e `pagamenti`**, e deve poterlo fare: da lì vengono i saldi
+dei clienti. Chi legge quelle due tabelle le può anche sommare, quindi può ricavarsi il ricavo
+della giornata con una query, anche se l'app non gliela mostra da nessuna parte.
+
+Non è una svista, è un limite del disegno attuale, ed è scritto anche dentro `0019_ruoli.sql`.
+Chiuderlo davvero vuol dire far passare ogni lettura da funzioni `security definer`, cioè rifare
+l'impianto della sicurezza. Vale la pena il giorno in cui il ricavo diventa un segreto da
+proteggere, non solo un numero da non sbandierare.
+
+---
+
+## 5.3 Aggiungere un collega
+
+Gli account **si creano da qui, non dall'app**: crearli richiede la chiave `service_role`, quella
+che scavalca ogni permesso, e tenerla fra le variabili d'ambiente del sito vorrebbe dire averla in
+un posto in più tutti i giorni per un'operazione che capita due volte l'anno.
+
+1. **Authentication → Users → Invite user**, e metti la sua mail.
+2. Riceve un invito e sceglie la password.
+3. Alla prima entrata il trigger `crea_profilo_utente` gli crea il profilo. **Il primo utente in
+   assoluto nasce titolare, tutti gli altri nascono baristi.**
+4. Se deve essere titolare, glielo cambi dall'app: **Altro → Persone**.
+
+Quando qualcuno se ne va, **non cancellare l'utente**: disattivalo da Persone. Cancellarlo
+lascerebbe orfane tutte le righe che ha battuto, e il database lo impedisce.
 
 ---
 

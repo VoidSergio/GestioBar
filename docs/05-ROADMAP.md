@@ -30,7 +30,7 @@
 | T-17 PWA | 🟨 quasi | service worker scritto a mano, pagina offline. **Da provare sui telefoni e con Lighthouse** |
 | T-18 Collaudo | 🟨 in corso | cominciato. Tre attriti già raccolti e corretti il 12 agosto — vedi il task e `09-DIARIO.md` |
 
-**Fase 0 chiusa.** L'app è pubblicata su Netlify, 347 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
+**Fase 0 chiusa.** L'app è pubblicata su Netlify, 365 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
 
 **Navigazione:** tab bar in basso (04-UX-MOBILE §2) sulle schermate principali, banco compreso. Sulla scheda Crediti, al posto della parola, c'è il credito in giro: era il numero grande della vecchia home e non poteva finire dietro un tocco.
 
@@ -627,11 +627,46 @@ nella griglia e allunga la ricerca a tutti. È la stessa vista letta dal basso.
 
 | Task | Contenuto | Criterio principale |
 |---|---|---|
-| T-40 | Policy RLS per ruolo | Un barista non legge i report economici, verificato con query dirette |
-| T-41 | Gestione utenti dall'app | Il titolare crea un barista senza aprire Supabase |
-| T-42 | Tracciabilità in interfaccia | Ogni riga mostra chi l'ha inserita |
-| T-43 | Report per operatore | Incassi e conti per barista, per periodo |
-| T-44 | PIN di blocco rapido | L'app si riapre con 4 cifre senza rifare il login |
+| T-40 | ✅ Policy RLS per ruolo | Fatto — listino e report al titolare. **Le query di verifica sono in `06-SETUP-SUPABASE.md` §5.2 e vanno eseguite su Supabase** |
+| T-41 | 🟨 Gestione utenti dall'app | Ruoli e disattivazione sì, creazione no: vedi sotto |
+| T-42 | 🟨 Tracciabilità | Il database firma ogni riga (`creato_da`), e c'è il report per operatore. **Manca l'autore sulla singola riga dell'estratto conto** |
+| T-43 | ✅ Report per operatore | Fatto — `v_operatore_giornata`, sezione "Chi ha lavorato" nei Report |
+| T-44 | ✅ PIN di blocco rapido | Fatto — quattro cifre, si copre da solo, `lib/dominio/blocco.ts` con 13 test |
+
+### Un buco che c'era da sempre, chiuso qui
+
+La policy `modifica profilo proprio` di `0003_sicurezza.sql` permetteva a chiunque di aggiornare la
+propria riga in `profili`. Quella riga contiene `ruolo`. **Fino a `0019` un barista poteva
+scrivere `update profili set ruolo = 'titolare' where id = auth.uid()` e diventare titolare**, con
+la sola chiave anon, che è pubblica per disegno. Non serviva nemmeno un errore dell'app.
+
+Adesso il divieto sta in un trigger — non in una policy, perché una `with check` vede solo la riga
+nuova e qui serve accorgersi che il ruolo è **cambiato**. Insieme sono arrivate altre due
+protezioni: nessuno cambia il proprio ruolo (nemmeno il titolare), e l'ultimo titolare attivo non
+si può retrocedere né disattivare — altrimenti il locale resta senza nessuno che possa cambiare
+prezzi, ruoli e fondo cassa, e senza modo di rimediare dall'app.
+
+### T-41: gli account si creano da Supabase
+
+Il criterio diceva "senza aprire Supabase" e **non è rispettato**, per scelta. Creare un utente
+richiede la chiave `service_role`, quella che scavalca ogni permesso: tenerla fra le variabili
+d'ambiente del sito vorrebbe dire averla in un posto in più tutti i giorni, per un'operazione che
+capita due volte l'anno. Se si perde, si perde tutto — clienti, debiti, pagamenti.
+
+Dall'app si fa quello che serve spesso: chi è titolare, chi è barista, chi non lavora più. Gli
+inviti si mandano da Supabase in due clic, ed è scritto passo passo in `06-SETUP-SUPABASE.md` §5.3.
+
+### Che cosa questi permessi non fanno
+
+Un barista **può leggere `righe_conto` e `pagamenti`**, e deve poterlo fare: da lì vengono i saldi
+dei clienti, e senza saldi non può decidere se dare credito. Chi legge quelle tabelle le può anche
+sommare, quindi può ricavarsi il ricavo della giornata anche se l'app non glielo mostra da nessuna
+parte.
+
+Chiuderlo davvero vuol dire far passare ogni lettura da funzioni `security definer`, cioè rifare
+l'impianto della sicurezza. È una cosa da fare il giorno in cui il ricavo diventa un segreto da
+proteggere, non solo un numero da non sbandierare. Sta scritto anche dentro `0019_ruoli.sql`,
+accanto al codice.
 
 ---
 
