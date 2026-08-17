@@ -26,11 +26,11 @@
 | T-14 Scheda cliente | ✅ fatta | estratto conto paginato a 30, saldo ancorato a `v_saldo_clienti` |
 | T-15 Crediti | ✅ fatta | ordine per anzianità, filtri, sollecito modificabile prima dell'invio |
 | Scontrini | ✅ fatta | **anticipata dalla Fase 2** su richiesta del titolare |
-| T-16 Listino | 🟨 quasi | prezzi, varianti, preferiti, disattivazione. **Manca il riordino per trascinamento** |
+| T-16 Listino | ✅ fatta | prezzi, varianti, preferiti, disattivazione, riordino |
 | T-17 PWA | 🟨 quasi | service worker scritto a mano, pagina offline. **Da provare sui telefoni e con Lighthouse** |
 | T-18 Collaudo | 🟨 in corso | cominciato. Tre attriti già raccolti e corretti il 12 agosto — vedi il task e `09-DIARIO.md` |
 
-**Fase 0 chiusa.** L'app è pubblicata su Netlify, 273 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
+**Fase 0 chiusa.** L'app è pubblicata su Netlify, 290 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
 
 **Navigazione:** tab bar in basso (04-UX-MOBILE §2) sulle schermate principali, banco compreso. Sulla scheda Crediti, al posto della parola, c'è il credito in giro: era il numero grande della vecchia home e non poteva finire dietro un tocco.
 
@@ -304,7 +304,7 @@ Fatto quando:
 
 - [x] La home elenca i conti aperti con cliente, totale e tempo trascorso
 - [x] Il **+** apre il pannello con "Banco" in cima e i clienti frequenti sotto
-- [ ] I frequenti sono ordinati per numero di conti negli ultimi 30 giorni *(per ora per debito: i dati di frequenza non esistono ancora)*
+- [x] I frequenti sono ordinati per numero di conti negli ultimi 30 giorni — `ordinaPerFrequenza` in `lib/dominio/clienti.ts`, il conteggio in `lib/hooks/use-frequenza.ts`
 - [x] Accanto a ogni cliente si vede il suo saldo
 - [ ] Selezionare un cliente che ha già un conto aperto porta a quel conto, senza errori
 - [ ] Da "Nuovo cliente" si crea e si apre il conto in un solo passaggio
@@ -400,7 +400,13 @@ File toccati: `app/listino/page.tsx`
 
 Cosa fare: modifica prezzi, varianti, preferiti, riordino, disattivazione.
 
-**Il riordino per trascinamento non è stato fatto.** Non è fra i criteri qui sotto — compare solo in `04-UX-MOBILE.md` §9 — e il trascinamento su telefono è una libreria in più contro una regola di `03-ARCHITETTURA.md` §1. I prodotti nuovi finiscono in fondo alla loro categoria. Se al banco l'ordine dà fastidio, si riapre con delle frecce su/giù invece del trascinamento.
+**Il riordino c'è, ma non per trascinamento.** `04-UX-MOBILE.md` §9 diceva "trascinamento", e questo documento aveva già scritto la via d'uscita: *"se al banco l'ordine dà fastidio, si riapre con delle frecce su/giù"*. È quello che è stato fatto il 12 agosto, e le ragioni sono le stesse di allora più una.
+
+Il trascinamento su telefono è una libreria in più, contro `03-ARCHITETTURA.md` §1 — oppure è codice scritto a mano che litiga con lo scorrimento della pagina, in una schermata dove non si può provare a tavolino. Le frecce invece o funzionano o non compilano: non hanno uno stato intermedio in cui il dito parte, la lista scorre e il prodotto finisce due posti più in là.
+
+E c'è un motivo che vale di più: **con 63 prodotti su nove categorie, spostare qualcosa "molto in su" col trascinamento vuol dire trascinare mentre la lista scorre da sola.** Il tasto ⇈ *in cima* fa quel gesto in un tocco, ed è il gesto che serve davvero — perché quello che si vuole non è "un posto più su", è "questo lo voglio fra i primi".
+
+Si sposta il **nome base**, non la singola variante: nella griglia un riquadro è un nome base (`v_griglia_prodotti` raggruppa e prende `min(ordine)`), quindi le varianti si muovono insieme. Il riordino è una modalità che si accende dal tasto in alto: fuori da lì la schermata è quella di prima.
 
 Fatto quando:
 

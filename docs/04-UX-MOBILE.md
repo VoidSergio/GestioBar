@@ -141,7 +141,8 @@ La domanda cambia perché costa zero e toglie un'esitazione: "A chi?" davanti a 
 
 **Dettagli che contano:**
 
-- I clienti "frequenti" sono quelli con più conti negli ultimi 30 giorni, non quelli in ordine alfabetico. Nel 90% dei casi la persona è tra i primi quattro e non serve digitare.
+- I clienti "frequenti" sono quelli con più conti negli ultimi 30 giorni, non quelli in ordine alfabetico e **non quelli che devono di più**. Sono due domande diverse: l'elenco Clienti serve a cercare qualcuno per incassare, e lì conta il debito; qui si sta aprendo un conto, e conta chi è probabile che sia la persona davanti — nel bar è quello che viene tutte le mattine. Nel 90% dei casi è tra i primi quattro e non serve digitare.
+- Chi non è passato negli ultimi 30 giorni non sparisce: scende sotto, ordinato come nell'elenco Clienti. È il caso del cliente nuovo, che ha zero conti e va comunque trovato — ma dopo quelli veri. Se il conteggio non è ancora arrivato (prima apertura, rete assente e cache fredda) l'ordine è quello dell'elenco Clienti: peggiore, mai vuoto.
 - Accanto a ogni nome si vede già **quanto deve**. Il barista decide con l'informazione davanti, non dopo.
 - Se il cliente supera il limite di credito, il saldo appare in rosso con un'icona di avviso. Non blocca (vedi §3.3 del modello dati).
 - Digitando, la ricerca filtra su nome e soprannome. Se non trova nulla, il pulsante diventa "+ Crea 'Marc'" — creare un cliente non deve costare più di digitarne il nome.
@@ -399,7 +400,11 @@ Si usa raramente, quindi non deve essere veloce — deve essere chiara.
 
 - Elenco per categoria, con prezzo modificabile in linea.
 - Interruttore "preferito" su ogni prodotto, con avviso se se ne segnano più di 9 (la griglia visibile ne contiene 9).
-- Trascinamento per riordinare.
+- **Riordino a modalità.** Il tasto "↕ Riordina" in alto trasforma l'elenco: ogni prodotto mostra ⇈ (in cima), ↑ e ↓ da 56 px, e sparisce tutto il resto. Fuori da quella modalità la schermata è quella di sempre — si riordina una volta ogni tanto, e per il resto dell'anno quelle frecce sarebbero solo roba da saltare con l'occhio.
+
+  Non è il trascinamento che diceva la prima stesura di questo documento. Il trascinamento su telefono litiga con lo scorrimento della pagina, e in un elenco di 63 prodotti "portare qualcosa fra i primi" vorrebbe dire trascinare mentre la lista scorre da sola. Il tasto **in cima** fa in un tocco il gesto che serve davvero. Il ragionamento completo sta in `05-ROADMAP.md`, T-16.
+
+  Si sposta il **prodotto**, non la variante: le varianti seguono, perché nella griglia sono un riquadro solo.
 - Quando si cambia un prezzo, un avviso ricorda che vale solo per le consumazioni future (DEC-05). Serve a rassicurare, non a chiedere conferma.
 - Un prodotto si "disattiva", non si elimina.
 
