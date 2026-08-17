@@ -7,11 +7,18 @@ import {
   grigliaOraria,
   intervallo,
   prodottiFermi,
+  raggruppaOperatori,
   raggruppaVenduto,
   sommaGiornate,
   spiegaVariazioneCredito,
 } from './report';
-import type { Giornata, OraDiPunta, RigaClassifica, VendutoProdotto } from '@/lib/supabase/tipi';
+import type {
+  Giornata,
+  OperatoreGiornata,
+  OraDiPunta,
+  RigaClassifica,
+  VendutoProdotto,
+} from '@/lib/supabase/tipi';
 
 function giornata(g: Partial<Giornata> & { giornata: string }): Giornata {
   return {
@@ -327,5 +334,77 @@ describe('descriviPunta', () => {
 
   it('senza punta non inventa una frase', () => {
     expect(descriviPunta(null)).toBeNull();
+  });
+});
+
+describe('raggruppaOperatori', () => {
+  const righe: OperatoreGiornata[] = [
+    {
+      giornata: '2026-08-11',
+      operatore_id: 'u1',
+      operatore: 'Marco',
+      venduto_cent: 20_000,
+      n_conti: 80,
+      incassato_cent: 18_000,
+    },
+    {
+      giornata: '2026-08-12',
+      operatore_id: 'u1',
+      operatore: 'Marco',
+      venduto_cent: 10_000,
+      n_conti: 40,
+      incassato_cent: 9_000,
+    },
+    {
+      giornata: '2026-08-12',
+      operatore_id: 'u2',
+      operatore: 'Lucia',
+      venduto_cent: 35_000,
+      n_conti: 120,
+      incassato_cent: 30_000,
+    },
+  ];
+
+  it('somma le giornate di ciascuno', () => {
+    const marco = raggruppaOperatori(righe).find((r) => r.nome === 'Marco');
+    expect(marco).toMatchObject({ vendutoCent: 30_000, incassatoCent: 27_000, nConti: 120 });
+  });
+
+  it('ordina da chi ha battuto di più', () => {
+    expect(raggruppaOperatori(righe).map((r) => r.nome)).toEqual(['Lucia', 'Marco']);
+  });
+
+  it('tiene i conti accanto all’incasso: l’incasso da solo sembra una pagella', () => {
+    for (const r of raggruppaOperatori(righe)) {
+      expect(r.nConti).toBeGreaterThan(0);
+    }
+  });
+
+  it('quello battuto prima che il database firmasse le righe è "senza nome"', () => {
+    const orfane: OperatoreGiornata[] = [
+      {
+        giornata: '2026-08-01',
+        operatore_id: null,
+        operatore: null,
+        venduto_cent: 5_000,
+        n_conti: 20,
+        incassato_cent: 5_000,
+      },
+    ];
+    expect(raggruppaOperatori(orfane)[0]?.nome).toBe('Senza nome');
+  });
+
+  it('chi non ha fatto niente non compare', () => {
+    const vuote: OperatoreGiornata[] = [
+      {
+        giornata: '2026-08-12',
+        operatore_id: 'u3',
+        operatore: 'Fermo',
+        venduto_cent: 0,
+        n_conti: 0,
+        incassato_cent: 0,
+      },
+    ];
+    expect(raggruppaOperatori(vuote)).toEqual([]);
   });
 });

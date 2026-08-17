@@ -11,7 +11,13 @@
  * anche quelle si arrotondano all'intero.
  */
 
-import type { Giornata, OraDiPunta, RigaClassifica, VendutoProdotto } from '@/lib/supabase/tipi';
+import type {
+  Giornata,
+  OperatoreGiornata,
+  OraDiPunta,
+  RigaClassifica,
+  VendutoProdotto,
+} from '@/lib/supabase/tipi';
 
 /* ------------------------------------------------------------ i periodi */
 
@@ -260,6 +266,55 @@ export function clientiSpariti(
   }
 
   return spariti.sort((a, b) => b.giorni - a.giorni);
+}
+
+/* ------------------------------------------------------- chi lavora */
+
+export interface RigaOperatore {
+  operatoreId: string | null;
+  nome: string;
+  vendutoCent: number;
+  incassatoCent: number;
+  nConti: number;
+}
+
+/**
+ * Somma le giornate per operatore (T-43).
+ *
+ * **Accanto all'incasso c'è sempre il numero di conti**, e non è un dettaglio
+ * di presentazione: chi sta al banco alle otto incassa in tre ore quello che
+ * un altro fa in tutto il pomeriggio. L'incasso da solo sembra una pagella e
+ * non lo è — misura il turno, non la persona.
+ *
+ * Quello battuto prima che il database cominciasse a firmare le righe
+ * (`0019_ruoli.sql`) non ha un autore. Si mostra come "senza nome", perché
+ * attribuirlo a qualcuno sarebbe peggio che dire che non si sa.
+ */
+export function raggruppaOperatori(righe: readonly OperatoreGiornata[]): RigaOperatore[] {
+  const per = new Map<string, RigaOperatore>();
+
+  for (const r of righe) {
+    const chiave = r.operatore_id ?? '';
+    const suo = per.get(chiave);
+
+    if (suo) {
+      suo.vendutoCent += r.venduto_cent;
+      suo.incassatoCent += r.incassato_cent;
+      suo.nConti += r.n_conti;
+    } else {
+      per.set(chiave, {
+        operatoreId: r.operatore_id,
+        nome: r.operatore ?? 'Senza nome',
+        vendutoCent: r.venduto_cent,
+        incassatoCent: r.incassato_cent,
+        nConti: r.n_conti,
+      });
+    }
+  }
+
+  return [...per.values()]
+    .filter((r) => r.vendutoCent !== 0 || r.incassatoCent !== 0 || r.nConti !== 0)
+    .sort((a, b) => b.vendutoCent - a.vendutoCent || a.nome.localeCompare(b.nome, 'it'));
 }
 
 /* ------------------------------------------------------ ore di punta */

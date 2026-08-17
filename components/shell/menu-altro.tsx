@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { IndicatoreSync } from './indicatore-sync';
 import { BarraNavigazione } from './barra-navigazione';
 import { PulsanteEsci } from './pulsante-esci';
+import type { Ruolo } from '@/lib/dominio/clienti';
 
 /**
  * La quarta scheda (04-UX-MOBILE.md §2): listino, cassa, magazzino,
@@ -34,10 +35,26 @@ const VOCI = [
     descrizione: 'Conta il cassetto, ritira, lascia il fondo',
   },
   {
+    href: '/blocco',
+    icona: '🔒',
+    titolo: 'Blocco schermo',
+    descrizione: 'Quattro cifre per coprire i crediti quando posi il telefono',
+  },
+] as const;
+
+/** Quello che vede solo il titolare. Chi vieta davvero sono le policy (0019). */
+const SOLO_TITOLARE = [
+  {
     href: '/report',
     icona: '📈',
     titolo: 'Report',
     descrizione: 'Quanto è entrato, cosa esce, chi consuma, a che ora',
+  },
+  {
+    href: '/persone',
+    icona: '👤',
+    titolo: 'Persone',
+    descrizione: 'Chi lavora, chi è titolare, chi non c’è più',
   },
 ] as const;
 
@@ -45,7 +62,9 @@ const IN_ARRIVO = [
   { icona: '📦', titolo: 'Magazzino', quando: 'giacenze e carichi — Fase 3' },
 ] as const;
 
-export function MenuAltro() {
+export function MenuAltro({ ruolo }: { ruolo: Ruolo | null }) {
+  const voci = ruolo === 'titolare' ? [...VOCI, ...SOLO_TITOLARE] : VOCI;
+
   return (
     <div className="flex h-dvh flex-col">
       <main className="min-h-0 flex-1 overflow-y-auto">
@@ -58,7 +77,7 @@ export function MenuAltro() {
         </header>
 
         <ul className="divide-y divide-[var(--color-bordo)] border-y border-[var(--color-bordo)]">
-          {VOCI.map((v) => (
+          {voci.map((v) => (
             <li key={v.href}>
               <Link
                 href={v.href}

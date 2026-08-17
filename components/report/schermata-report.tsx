@@ -14,6 +14,7 @@ import {
   intervallo,
   PERIODI,
   prodottiFermi,
+  raggruppaOperatori,
   raggruppaVenduto,
   sommaGiornate,
   spiegaVariazioneCredito,
@@ -28,6 +29,7 @@ import {
   useVendutoProdotto,
 } from '@/lib/hooks/use-report';
 import { useListino } from '@/lib/hooks/use-listino';
+import { useOperatori } from '@/lib/hooks/use-persone';
 import { IndicatoreSync } from '@/components/shell/indicatore-sync';
 import { BarraNavigazione } from '@/components/shell/barra-navigazione';
 import { AvvisoLettura } from '@/components/shell/avviso-lettura';
@@ -57,6 +59,7 @@ export function SchermataReport() {
   const venduto = useVendutoProdotto(finestra.da, finestra.a);
   const clienti = useClassifica();
   const ore = useOreDiPunta();
+  const operatori = useOperatori(finestra.da, finestra.a);
   const { data: listino } = useListino();
 
   const totali = useMemo(() => sommaGiornate(giornate.data ?? []), [giornate.data]);
@@ -76,6 +79,10 @@ export function SchermataReport() {
   );
   const spariti = useMemo(() => clientiSpariti(clienti.data ?? []), [clienti.data]);
   const griglia = useMemo(() => grigliaOraria(ore.data ?? []), [ore.data]);
+  const chiHaLavorato = useMemo(
+    () => raggruppaOperatori(operatori.data ?? []),
+    [operatori.data],
+  );
 
   function esporta(cosa: 'giornate' | 'prodotti') {
     const contenuto =
@@ -336,6 +343,38 @@ export function SchermataReport() {
                 <p className="mt-3 px-1 text-xs text-[var(--color-testo-tenue)]">
                   Le classifiche mostrano chi c&apos;è, non chi manca. Chi veniva tutte le mattine e
                   non passa da tre settimane è una domanda da farsi.
+                </p>
+              </Sezione>
+            )}
+
+            {/* ------------------------------------------- chi lavora */}
+            {chiHaLavorato.length > 1 && (
+              <Sezione titolo="Chi ha lavorato">
+                <ul className="divide-y divide-[var(--color-bordo)] overflow-hidden rounded-2xl bg-[var(--color-superficie)]">
+                  {chiHaLavorato.map((o) => (
+                    <li key={o.operatoreId ?? 'senza'} className="px-5 py-3">
+                      <div className="flex items-baseline gap-3">
+                        <span className="min-w-0 flex-1 truncate font-medium">{o.nome}</span>
+                        <span className="shrink-0 tabular-nums">{formatEuro(o.vendutoCent)}</span>
+                      </div>
+                      <p className="text-xs text-[var(--color-testo-tenue)]">
+                        {o.nConti} {o.nConti === 1 ? 'conto' : 'conti'} · incassati{' '}
+                        {formatEuro(o.incassatoCent)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+                {/* L'incasso da solo sembra una pagella e non lo è. */}
+                <p className="mt-3 px-1 text-xs text-[var(--color-testo-tenue)]">
+                  Accanto all&apos;incasso c&apos;è sempre il numero di conti: chi sta al banco alle
+                  otto fa in tre ore quello che un altro fa in tutto il pomeriggio. Il numero
+                  misura il turno, non la persona.
+                  {chiHaLavorato.some((o) => o.operatoreId === null) && (
+                    <span className="mt-1 block">
+                      La riga senza nome è quello battuto prima che l&apos;app cominciasse a
+                      registrare chi fa cosa.
+                    </span>
+                  )}
                 </p>
               </Sezione>
             )}
