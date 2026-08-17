@@ -333,6 +333,22 @@ export type RigaClassifica = {
   ultima_consumazione_il: string | null;
 };
 
+/**
+ * Quanto ha lavorato ciascuno, per giornata (T-43).
+ *
+ * `operatore_id` e `operatore` sono `null` per tutto quello che è stato
+ * battuto prima di `0019_ruoli.sql`: `creato_da` non veniva riempito da
+ * nessuno. È una riga "senza nome", non un buco.
+ */
+export type OperatoreGiornata = {
+  giornata: string;
+  operatore_id: string | null;
+  operatore: string | null;
+  venduto_cent: number;
+  n_conti: number;
+  incassato_cent: number;
+};
+
 /** Quanto si lavora, per giorno della settimana e ora. `isodow`: 1 = lunedì. */
 export type OraDiPunta = {
   giorno_settimana: number;
@@ -434,6 +450,7 @@ export interface Database {
       v_venduto_prodotto: { Row: VendutoProdotto; Relationships: [] };
       v_classifica_clienti: { Row: RigaClassifica; Relationships: [] };
       v_ore_di_punta: { Row: OraDiPunta; Relationships: [] };
+      v_operatore_giornata: { Row: OperatoreGiornata; Relationships: [] };
     };
     Functions: Record<string, never>;
     Enums: Record<string, never>;

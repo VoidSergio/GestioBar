@@ -143,12 +143,20 @@ await deveFallire('un pagamento non si cancella', 'delete from pagamenti', 'non 
 
 console.log('\nLA SPUNTA DELLO SCONTRINO: SOLO IL TITOLARE (0017)');
 // Il trigger crea_profilo_utente ha gia' fatto 'titolare' il primo utente.
+//
+// Per provare il divieto serve qualcuno che titolare non sia. Prima questa
+// prova retrocedeva `utente` a barista e poi lo rimetteva a posto: da 0019
+// non si puo' piu' — nessuno cambia il proprio ruolo, e l'ultimo titolare
+// attivo non si retrocede. Il divieto e' giusto, quindi si cambia la prova:
+// si registra un secondo utente, che nasce barista.
+const aiuto = await uno("insert into auth.users (email) values ('aiuto@bar.it') returning id");
+await db.exec(`select set_config('test.uid', '${aiuto.id}', false)`);
 await deveFallire(
   'un barista non la tocca',
-  "update profili set ruolo = 'barista' where id = '" + utente.id + "'; update pagamenti set scontrino_battuto = true",
+  'update pagamenti set scontrino_battuto = true',
   'Solo il titolare'
 );
-await db.exec(`update profili set ruolo = 'titolare' where id = '${utente.id}'`);
+await db.exec(`select set_config('test.uid', '${utente.id}', false)`);
 await db.exec('update pagamenti set scontrino_battuto = true');
 eq('la spunta cambia', true, (await uno('select scontrino_battuto s from pagamenti limit 1')).s);
 eq(
@@ -334,6 +342,123 @@ eq(
   'il giorno della settimana è quello ISO: lunedì 1, domenica 7',
   (await uno("select extract(isodow from (now() at time zone 'Europe/Rome'))::int d")).d,
   (await uno('select min(giorno_settimana) g from v_ore_di_punta')).g
+);
+
+
+console.log("\nRUOLI (0019) — quello che si può provare senza Supabase");
+// PGlite non ha la RLS di Supabase: le policy vanno provate sul progetto vero
+// (06-SETUP-SUPABASE §5.2). I trigger invece girano qui, e sono loro che
+// tengono i divieti che contano.
+
+// `utente` è il primo registrato, quindi titolare; `collega` è barista.
+eq(
+  'il primo registrato è titolare',
+  'titolare',
+  (await uno(`select ruolo from profili where id = '${utente.id}'`)).ruolo
+);
+eq(
+  'il secondo è barista',
+  'barista',
+  (await uno(`select ruolo from profili where id = '${collega.id}'`)).ruolo
+);
+
+await db.exec(`select set_config('test.uid', '${collega.id}', false)`);
+await deveFallire(
+  'un barista non si promuove da solo — era un buco aperto',
+  `update profili set ruolo = 'titolare' where id = '${collega.id}'`,
+  'solo il titolare'
+);
+// Su `aiuto`, che è barista: promuovere chi è già titolare non cambia
+// niente, e un trigger che guarda il cambiamento non avrebbe motivo di
+// scattare. Il divieto va provato dove il ruolo si muove davvero.
+await deveFallire(
+  'né promuove qualcun altro',
+  `update profili set ruolo = 'titolare' where id = '${aiuto.id}'`,
+  'solo il titolare'
+);
+await deveFallire(
+  'né si disattiva un collega per conto suo',
+  `update profili set attivo = false where id = '${utente.id}'`,
+  'solo il titolare'
+);
+
+await db.exec(`select set_config('test.uid', '${utente.id}', false)`);
+await deveFallire(
+  'nemmeno il titolare cambia il proprio ruolo',
+  `update profili set ruolo = 'barista' where id = '${utente.id}'`,
+  'non si cambia da soli'
+);
+await deveFallire(
+  "l'ultimo titolare attivo non si disattiva",
+  `update profili set attivo = false where id = '${utente.id}'`,
+  'almeno un titolare'
+);
+
+await db.exec(`update profili set ruolo = 'titolare' where id = '${collega.id}'`);
+eq(
+  'il titolare promuove un barista',
+  'titolare',
+  (await uno(`select ruolo from profili where id = '${collega.id}'`)).ruolo
+);
+await db.exec(`update profili set attivo = false where id = '${utente.id}'`);
+eq(
+  'con due titolari uno si può disattivare',
+  false,
+  (await uno(`select attivo from profili where id = '${utente.id}'`)).attivo
+);
+await db.exec(`update profili set attivo = true where id = '${utente.id}'`);
+await db.exec(`update profili set ruolo = 'barista' where id = '${collega.id}'`);
+
+await deveFallire(
+  'un profilo non si cancella: si perderebbe chi ha battuto cosa',
+  `delete from profili where id = '${collega.id}'`,
+  'non si cancella'
+);
+
+console.log('\nCHI HA BATTUTO COSA (T-42)');
+const contoFirmato = await uno(
+  `insert into conti (op_id) values (gen_random_uuid()) returning id, creato_da`
+);
+eq('il conto porta la firma di chi lo apre', utente.id, contoFirmato.creato_da);
+
+const rigaFirmata = await uno(`insert into righe_conto
+  (conto_id, descrizione, prezzo_unitario_cent, quantita, op_id)
+  values ('${contoFirmato.id}', 'Caffè', 120, 1, gen_random_uuid())
+  returning creato_da`);
+eq('e anche la riga', utente.id, rigaFirmata.creato_da);
+
+const pagFirmato = await uno(`insert into pagamenti (conto_id, importo_cent, metodo, op_id)
+  values ('${contoFirmato.id}', 120, 'contanti', gen_random_uuid()) returning creato_da`);
+eq('e il pagamento', utente.id, pagFirmato.creato_da);
+
+eq(
+  "quello che il client manda esplicitamente non viene sovrascritto",
+  collega.id,
+  (await uno(`insert into pagamenti (conto_id, importo_cent, metodo, creato_da, op_id)
+     values ('${contoFirmato.id}', 100, 'contanti', '${collega.id}', gen_random_uuid())
+     returning creato_da`)).creato_da
+);
+
+eq(
+  'il venduto di oggi risulta a nome di chi lo ha battuto',
+  utente.id,
+  (await uno(`select operatore_id from v_operatore_giornata
+     where operatore_id = '${utente.id}'
+       and giornata = (now() at time zone 'Europe/Rome')::date`)).operatore_id
+);
+
+console.log('\nI REPORT SONO PER IL TITOLARE');
+await db.exec(`select set_config('test.uid', '${collega.id}', false)`);
+eq('un barista non vede le giornate', 0, (await uno('select count(*) n from v_giornata')).n);
+eq('né la classifica clienti', 0, (await uno('select count(*) n from v_classifica_clienti')).n);
+eq('né che cosa esce', 0, (await uno('select count(*) n from v_venduto_prodotto')).n);
+eq('né chi ha lavorato', 0, (await uno('select count(*) n from v_operatore_giornata')).n);
+
+await db.exec(`select set_config('test.uid', '${utente.id}', false)`);
+eq(
+  'il titolare invece sì',
+  true,
+  (await uno('select count(*) > 0 n from v_giornata')).n
 );
 
 console.log(`\n${passati} verificati, ${falliti} falliti\n`);
