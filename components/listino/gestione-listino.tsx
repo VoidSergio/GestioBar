@@ -13,13 +13,16 @@ import {
   LIMITE_PREFERITI,
   nomeCompleto,
   raggruppaListino,
+  spostaNelListino,
   troppiPreferiti,
   validaPrezzo,
+  type MossaListino,
 } from '@/lib/dominio/listino';
 import {
   useCategorie,
   useListino,
   useModificaProdotto,
+  useRiordinaListino,
   type VoceListino,
 } from '@/lib/hooks/use-listino';
 import { IndicatoreSync } from '@/components/shell/indicatore-sync';
@@ -43,9 +46,20 @@ export function GestioneListino() {
   const { data: prodotti, isPending, fetchStatus, error, refetch } = useListino();
   const { data: categorie } = useCategorie();
 
+  const riordina = useRiordinaListino();
+
   const [mostraInattivi, setMostraInattivi] = useState(false);
   const [creazione, setCreazione] = useState<{ nomeBase?: string } | null>(null);
   const [avviso, setAvviso] = useState<string | null>(null);
+  /**
+   * Il riordino è una modalità, non un pulsante su ogni riga.
+   *
+   * Si riordina una volta ogni tanto — quando cambia la stagione, quando
+   * entra un prodotto nuovo — e per il resto dell'anno quei comandi
+   * sarebbero solo altre due frecce accanto a ogni prezzo, da saltare con
+   * l'occhio ogni volta che si viene qui per fare altro.
+   */
+  const [riordino, setRiordino] = useState(false);
 
   const inPausa = fetchStatus === 'paused' && prodotti === undefined;
 
@@ -76,7 +90,34 @@ export function GestioneListino() {
           </Link>
           <h1 className="text-xl font-bold">Listino</h1>
           <IndicatoreSync />
+
+          <button
+            type="button"
+            onClick={() => {
+              // Uscendo dal riordino si torna a vedere tutto com'era; entrando
+              // si nascondono i disattivati, perché rinumerare un elenco che
+              // comprende prodotti che nella griglia non ci sono sposterebbe
+              // cose che l'utente non sta guardando.
+              setMostraInattivi(false);
+              setRiordino((r) => !r);
+            }}
+            aria-pressed={riordino}
+            className={`ml-auto h-11 shrink-0 rounded-lg px-3 text-sm font-medium ${
+              riordino
+                ? 'bg-[var(--color-accento)] text-[var(--color-sfondo)]'
+                : 'border border-[var(--color-bordo)] text-[var(--color-testo-tenue)]'
+            }`}
+          >
+            {riordino ? 'Fatto' : '↕ Riordina'}
+          </button>
         </header>
+
+        {riordino && (
+          <p className="mx-5 mb-3 rounded-xl bg-[var(--color-superficie)] px-4 py-3 text-sm text-[var(--color-testo-tenue)]">
+            Sposta i prodotti: quelli in alto sono i primi che vedi nella griglia. Le varianti si
+            spostano insieme al loro prodotto. I preferiti restano comunque in cima a tutto.
+          </p>
+        )}
 
         {troppiPreferiti(nPreferiti) && (
           <p className="mx-5 mb-3 rounded-xl border border-[var(--color-attenzione)]/40 bg-[var(--color-attenzione)]/10 px-4 py-3 text-sm text-[var(--color-attenzione)]">
@@ -115,20 +156,33 @@ export function GestioneListino() {
                   <h2 className="text-xs font-semibold uppercase text-[var(--color-testo-tenue)]">
                     {g.categoria}
                   </h2>
-                  <button
-                    type="button"
-                    onClick={() => setCreazione({})}
-                    className="text-xs text-[var(--color-accento)]"
-                  >
-                    + prodotto
-                  </button>
+                  {!riordino && (
+                    <button
+                      type="button"
+                      onClick={() => setCreazione({})}
+                      className="text-xs text-[var(--color-accento)]"
+                    >
+                      + prodotto
+                    </button>
+                  )}
                 </div>
 
                 <ul className="divide-y divide-[var(--color-bordo)] border-y border-[var(--color-bordo)]">
-                  {g.prodotti.map((p) => (
+                  {g.prodotti.map((p, i) => (
                     <RigaListino
                       key={p.id}
                       voce={p}
+                      riordino={riordino}
+                      // I comandi stanno sulla prima riga del gruppo: la
+                      // seconda variante di un caffè non ha un posto suo da
+                      // cambiare, si muove insieme alla prima.
+                      primoDelGruppo={i === 0 || g.prodotti[i - 1]!.nome_base !== p.nome_base}
+                      inCima={g.prodotti[0]!.nome_base === p.nome_base}
+                      inFondo={g.prodotti[g.prodotti.length - 1]!.nome_base === p.nome_base}
+                      onSposta={(mossa) => {
+                        const cambiati = spostaNelListino(g.prodotti, p.nome_base, mossa);
+                        if (cambiati.length > 0) riordina.mutate(cambiati);
+                      }}
                       onAvviso={setAvviso}
                       onNuovaVariante={() => setCreazione({ nomeBase: p.nome_base })}
                     />
@@ -137,7 +191,7 @@ export function GestioneListino() {
               </section>
             ))}
 
-            {nInattivi > 0 && (
+            {nInattivi > 0 && !riordino && (
               <div className="px-5 py-5">
                 <button
                   type="button"
@@ -176,10 +230,20 @@ export function GestioneListino() {
 
 function RigaListino({
   voce,
+  riordino,
+  primoDelGruppo,
+  inCima,
+  inFondo,
+  onSposta,
   onAvviso,
   onNuovaVariante,
 }: {
   voce: VoceListino;
+  riordino: boolean;
+  primoDelGruppo: boolean;
+  inCima: boolean;
+  inFondo: boolean;
+  onSposta: (mossa: MossaListino) => void;
   onAvviso: (messaggio: string) => void;
   onNuovaVariante: () => void;
 }) {
@@ -214,6 +278,44 @@ function RigaListino({
       setTesto(centesimiInCampo(vecchio));
       setErrore(e instanceof Error ? e.message : 'Non sono riuscito a salvare.');
     }
+  }
+
+  if (riordino) {
+    const nome = nomeCompleto(voce.nome_base, voce.variante);
+
+    return (
+      <li className="flex min-h-16 items-center gap-2 px-5 py-2">
+        <span className="min-w-0 flex-1 truncate">{nome}</span>
+
+        {/* Le varianti seguono il loro prodotto: qui non c'è niente da
+            spostare, e mostrare frecce spente confonderebbe soltanto. */}
+        {primoDelGruppo && (
+          <>
+            <Freccia
+              etichetta={`Porta ${voce.nome_base} in cima`}
+              disabilitato={inCima}
+              onClick={() => onSposta('cima')}
+            >
+              ⇈
+            </Freccia>
+            <Freccia
+              etichetta={`Sposta ${voce.nome_base} in su`}
+              disabilitato={inCima}
+              onClick={() => onSposta('su')}
+            >
+              ↑
+            </Freccia>
+            <Freccia
+              etichetta={`Sposta ${voce.nome_base} in giù`}
+              disabilitato={inFondo}
+              onClick={() => onSposta('giu')}
+            >
+              ↓
+            </Freccia>
+          </>
+        )}
+      </li>
+    );
   }
 
   return (
@@ -297,5 +399,30 @@ function RigaListino({
         </button>
       </div>
     </li>
+  );
+}
+
+/** Un comando di spostamento. 56 px: qui le mani sono asciutte, ma il dito è lo stesso. */
+function Freccia({
+  etichetta,
+  disabilitato,
+  onClick,
+  children,
+}: {
+  etichetta: string;
+  disabilitato: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabilitato}
+      aria-label={etichetta}
+      className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-[var(--color-bordo)] text-xl text-[var(--color-testo)] active:bg-[var(--color-superficie)] disabled:opacity-25"
+    >
+      {children}
+    </button>
   );
 }

@@ -166,6 +166,73 @@ export interface GruppoListino {
   }>;
 }
 
+/* ------------------------------------------------ riordino del listino */
+
+export type MossaListino = 'su' | 'giu' | 'cima';
+
+/** Un `ordine` nuovo da scrivere su un prodotto. */
+export interface NuovoOrdine {
+  id: string;
+  ordine: number;
+}
+
+/**
+ * Sposta un prodotto dentro la sua categoria.
+ *
+ * SI MUOVE IL NOME BASE, NON LA SINGOLA VARIANTE. Nella griglia un riquadro
+ * è un `nome_base` — "Caffè" con dentro normale, decaffeinato e d'orzo
+ * (`v_griglia_prodotti` raggruppa e prende `min(ordine)`). Spostare una
+ * variante da sola vorrebbe dire spostare mezzo riquadro: a schermo non
+ * cambierebbe niente, oppure cambierebbe il posto dell'intero gruppo per un
+ * motivo che nessuno riesce a indovinare.
+ *
+ * Restituisce **solo le voci il cui `ordine` cambia davvero**. Rinumerare
+ * tutto è semplice e non lascia buchi, ma scrivere sessanta righe per
+ * spostarne una di un posto sarebbe uno spreco visibile: alla prima mossa
+ * si aspetterebbe la rete per un secondo.
+ *
+ * L'elenco in ingresso dev'essere già nell'ordine in cui si vede a schermo,
+ * e di una sola categoria: mescolare due categorie qui rinumererebbe voci
+ * che l'utente non stava guardando.
+ */
+export function spostaNelListino<T extends { id: string; nome_base: string; ordine: number }>(
+  prodotti: readonly T[],
+  nomeBase: string,
+  mossa: MossaListino,
+): NuovoOrdine[] {
+  const blocchi: Array<{ nomeBase: string; voci: T[] }> = [];
+
+  for (const p of prodotti) {
+    const suo = blocchi.find((b) => b.nomeBase === p.nome_base);
+    if (suo) suo.voci.push(p);
+    else blocchi.push({ nomeBase: p.nome_base, voci: [p] });
+  }
+
+  const da = blocchi.findIndex((b) => b.nomeBase === nomeBase);
+  if (da < 0) return [];
+
+  const a = mossa === 'cima' ? 0 : mossa === 'su' ? da - 1 : da + 1;
+  // Fuori dai bordi non è un errore: è il primo che prova a salire ancora.
+  if (a === da || a < 0 || a >= blocchi.length) return [];
+
+  const riordinati = [...blocchi];
+  const [preso] = riordinati.splice(da, 1);
+  if (!preso) return [];
+  riordinati.splice(a, 0, preso);
+
+  const cambiati: NuovoOrdine[] = [];
+  let posizione = 1;
+
+  for (const b of riordinati) {
+    for (const v of b.voci) {
+      if (v.ordine !== posizione) cambiati.push({ id: v.id, ordine: posizione });
+      posizione += 1;
+    }
+  }
+
+  return cambiati;
+}
+
 /**
  * Il listino come si legge a schermo: per categoria, e dentro ogni categoria
  * i prodotti dello stesso nome base vicini, così le varianti si vedono in fila.

@@ -5,6 +5,7 @@ import {
   categorieDi,
   avvisoCambioPrezzo,
   raggruppaListino,
+  spostaNelListino,
   troppiPreferiti,
   validaNuovaVoce,
   validaPrezzo,
@@ -250,5 +251,76 @@ describe('raggruppaListino', () => {
     const g = raggruppaListino([prod('Boh', 'normale', null)], categorie);
     expect(g).toHaveLength(1);
     expect(g[0]!.categoria).toBe('Senza categoria');
+  });
+});
+
+describe('spostaNelListino', () => {
+  const voce = (id: string, nome_base: string, ordine: number) => ({ id, nome_base, ordine });
+
+  // Caffè ha due varianti: si muovono insieme, sono un riquadro solo.
+  const listino = [
+    voce('caffe-1', 'Caffè', 1),
+    voce('caffe-2', 'Caffè', 2),
+    voce('cappuccino', 'Cappuccino', 3),
+    voce('cornetto', 'Cornetto', 4),
+  ];
+
+  it('sposta in giù un prodotto e rinumera quello che ha scavalcato', () => {
+    expect(spostaNelListino(listino, 'Caffè', 'giu')).toEqual([
+      { id: 'cappuccino', ordine: 1 },
+      { id: 'caffe-1', ordine: 2 },
+      { id: 'caffe-2', ordine: 3 },
+    ]);
+  });
+
+  it('le varianti seguono il loro prodotto, non restano indietro', () => {
+    const cambiati = spostaNelListino(listino, 'Cornetto', 'cima');
+    const ordinePerId = new Map(cambiati.map((c) => [c.id, c.ordine]));
+
+    expect(ordinePerId.get('cornetto')).toBe(1);
+    expect(ordinePerId.get('caffe-1')).toBe(2);
+    expect(ordinePerId.get('caffe-2')).toBe(3);
+    expect(ordinePerId.get('cappuccino')).toBe(4);
+  });
+
+  it('restituisce solo quello che cambia davvero', () => {
+    // Cappuccino sale di un posto: Cornetto, che sta sotto, non si muove.
+    const cambiati = spostaNelListino(listino, 'Cappuccino', 'su');
+    expect(cambiati.map((c) => c.id)).not.toContain('cornetto');
+  });
+
+  it('il primo non sale e l’ultimo non scende: nessuna scrittura', () => {
+    expect(spostaNelListino(listino, 'Caffè', 'su')).toEqual([]);
+    expect(spostaNelListino(listino, 'Caffè', 'cima')).toEqual([]);
+    expect(spostaNelListino(listino, 'Cornetto', 'giu')).toEqual([]);
+  });
+
+  it('un nome che non c’è non tocca niente', () => {
+    expect(spostaNelListino(listino, 'Spritz', 'su')).toEqual([]);
+  });
+
+  it('non modifica l’elenco di partenza', () => {
+    spostaNelListino(listino, 'Cornetto', 'cima');
+    expect(listino.map((v) => v.id)).toEqual(['caffe-1', 'caffe-2', 'cappuccino', 'cornetto']);
+    expect(listino[0]!.ordine).toBe(1);
+  });
+
+  it('applicato al listino, l’ordine finale è quello che ci si aspetta', () => {
+    const cambiati = spostaNelListino(listino, 'Cornetto', 'cima');
+    const perId = new Map(cambiati.map((c) => [c.id, c.ordine]));
+
+    const dopo = listino
+      .map((v) => ({ ...v, ordine: perId.get(v.id) ?? v.ordine }))
+      .sort((a, b) => a.ordine - b.ordine);
+
+    expect(dopo.map((v) => v.nome_base)).toEqual(['Cornetto', 'Caffè', 'Caffè', 'Cappuccino']);
+  });
+
+  it('rinumera senza buchi né doppioni: la griglia legge min(ordine) per riquadro', () => {
+    const cambiati = spostaNelListino(listino, 'Cornetto', 'cima');
+    const perId = new Map(cambiati.map((c) => [c.id, c.ordine]));
+    const ordini = listino.map((v) => perId.get(v.id) ?? v.ordine).sort((a, b) => a - b);
+
+    expect(ordini).toEqual([1, 2, 3, 4]);
   });
 });

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabaseBrowser } from '@/lib/supabase/client';
 import type { Categoria, Prodotto } from '@/lib/supabase/tipi';
 import { ErroreLettura } from '@/lib/dominio/errori';
+import type { NuovoOrdine } from '@/lib/dominio/listino';
 
 /**
  * Il listino, per la schermata che lo gestisce (T-16).
@@ -103,6 +104,60 @@ export function useModificaProdotto() {
 
       queryClient.setQueryData<VoceListino[]>(CHIAVE_LISTINO, (voci) =>
         voci?.map((v) => (v.id === dati.id ? { ...v, ...dati.campi } : v)),
+      );
+
+      return { precedente };
+    },
+
+    onError: (_e, _dati, contesto) => {
+      if (contesto?.precedente) {
+        queryClient.setQueryData(CHIAVE_LISTINO, contesto.precedente);
+      }
+    },
+
+    onSettled: () => invalidaTutto(queryClient),
+  });
+}
+
+/**
+ * Scrive gli `ordine` nuovi dopo uno spostamento.
+ *
+ * Arrivano già calcolati da `spostaNelListino`, che decide chi si muove e
+ * chi no: qui si scrive e basta. Le righe sono poche — quelle fra la
+ * posizione di partenza e quella d'arrivo — e partono insieme, perché
+ * aspettarle una per una si sentirebbe a ogni tocco.
+ */
+export function useRiordinaListino() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (nuoviOrdini: readonly NuovoOrdine[]) => {
+      const esiti = await Promise.all(
+        nuoviOrdini.map((n) =>
+          supabaseBrowser()
+            .from('prodotti')
+            .update({ ordine: n.ordine }, { count: 'exact' })
+            .eq('id', n.id),
+        ),
+      );
+
+      for (const { error, count } of esiti) {
+        if (error) throw new ErroreLettura(error.message, error.code);
+        // RLS che vieta non dà errore: restituisce zero righe toccate.
+        if (count === 0) throw new Error('Non hai i permessi per modificare il listino.');
+      }
+    },
+
+    // L'ordine cambia sotto il dito. Se il server rifiuta si torna indietro:
+    // un elenco che si riordina mezzo secondo dopo il tocco è peggio di uno
+    // che non si riordina, perché non si capisce quale tocco ha fatto cosa.
+    onMutate: async (nuoviOrdini) => {
+      await queryClient.cancelQueries({ queryKey: CHIAVE_LISTINO });
+      const precedente = queryClient.getQueryData<VoceListino[]>(CHIAVE_LISTINO);
+      const perId = new Map(nuoviOrdini.map((n) => [n.id, n.ordine]));
+
+      queryClient.setQueryData<VoceListino[]>(CHIAVE_LISTINO, (voci) =>
+        voci?.map((v) => (perId.has(v.id) ? { ...v, ordine: perId.get(v.id)! } : v)),
       );
 
       return { precedente };
