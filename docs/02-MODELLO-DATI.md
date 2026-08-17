@@ -765,6 +765,73 @@ sguardo.
 
 ---
 
+## 4.3 Le viste dei report (T-23, T-25, T-26)
+
+`0018_report.sql`. **Nessuna tabella nuova**: sono quattro letture su `righe_conto` e `pagamenti`,
+che registrano già tutto quello che serve — la descrizione e il prezzo congelati sulla riga
+(DEC-05) e `creato_il` al secondo. Se una vista risultasse sbagliata si riscrive e si rilegge,
+senza migrare niente e senza rischiare un dato.
+
+| Vista | Una riga per | A cosa serve |
+|---|---|---|
+| `v_giornata` | giornata di calendario | quanto è uscito, quanto è entrato, quanto credito si è mosso |
+| `v_venduto_prodotto` | giornata × nome di prodotto | che cosa esce, e che cosa non esce |
+| `v_classifica_clienti` | cliente | chi consuma e chi paga, mese corrente e sempre |
+| `v_ore_di_punta` | giorno della settimana × ora | quando si lavora davvero, ultimi 90 giorni |
+
+### I quattro numeri di `v_giornata` non si sommano fra loro
+
+```
+venduto           merce uscita dal bar, pagata o no
+incassato         soldi entrati, per qualunque motivo
+credito_concesso  venduto rimasto da pagare
+credito_rientrato soldi entrati per saldare debiti vecchi
+```
+
+Le identità che li legano, verificate a ogni `npm run verifica:migrazioni`:
+
+```
+incassato = incassato_su_conti + credito_rientrato
+venduto   = incassato_su_conti + credito_concesso
+```
+
+Da cui **venduto − incassato = credito_concesso − credito_rientrato**. Cioè la differenza fra
+quello che è uscito e quello che è entrato non è un ammanco: è di quanto è cresciuto il credito in
+giro. È il numero che spiega perché una giornata da 400 € di consumazioni può chiudere con 250 €
+in cassa senza che manchi niente — e senza quella riga scritta a schermo, quella differenza si
+cerca per mezz'ora.
+
+### Gli storni non hanno bisogno di nessun filtro
+
+Una riga stornata ha `quantita < 0` per vincolo di schema (§3.6) e uno storno di pagamento ha
+`importo_cent < 0` (§3.7). Le somme sono già nette.
+
+**Non scrivere `where storno_di is null`.** Toglierebbe lo storno lasciando dentro la riga
+sbagliata: il contrario di quello che serve, e con un risultato che sembra plausibile.
+
+### La giornata e il turno sono due tagli diversi
+
+`v_giornata` legge i **movimenti** e taglia a mezzanotte. `v_riepilogo_giornata` (§4.1) somma le
+**chiusure di turno**, cioè quanto è stato dichiarato contando il cassetto, e un turno può
+scavalcare la mezzanotte. Servono a due cose diverse — la cassa si quadra per turno, il venduto si
+legge per giornata — e **non vanno confrontati riga per riga**.
+
+Il fuso è scritto nella vista (`at time zone 'Europe/Rome'`) e non ereditato dalla sessione: la
+giornata di un bar dev'essere la stessa vista dal telefono, dal browser e da uno script.
+
+### Il buco: il banco
+
+`v_classifica_clienti` vede solo i conti intestati, perché quelli anonimi non hanno un cliente. In
+un bar sono spesso la maggioranza del giro, e da quando la schermata di apertura è la griglia
+(04-UX-MOBILE §3) lo sono ancora di più. La classifica risponde a *"chi fra i clienti che conosco
+consuma di più"*, **non** a *"da dove vengono i miei soldi"*. La schermata lo scrive, altrimenti il
+totale sembra un errore di conto.
+
+`v_venduto_prodotto` invece li comprende tutti: quello che esce esce, che sia segnato o pagato
+subito.
+
+---
+
 ## 5. SQL — Fase 3 (magazzino)
 
 > Da eseguire solo dopo che la Fase 2 è stabile.

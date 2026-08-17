@@ -30,7 +30,7 @@
 | T-17 PWA | 🟨 quasi | service worker scritto a mano, pagina offline. **Da provare sui telefoni e con Lighthouse** |
 | T-18 Collaudo | 🟨 in corso | cominciato. Tre attriti già raccolti e corretti il 12 agosto — vedi il task e `09-DIARIO.md` |
 
-**Fase 0 chiusa.** L'app è pubblicata su Netlify, 290 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
+**Fase 0 chiusa.** L'app è pubblicata su Netlify, 347 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
 
 **Navigazione:** tab bar in basso (04-UX-MOBILE §2) sulle schermate principali, banco compreso. Sulla scheda Crediti, al posto della parola, c'è il credito in giro: era il numero grande della vecchia home e non poteva finire dietro un tocco.
 
@@ -536,13 +536,37 @@ Questo è il vero criterio di uscita dalla Fase 1. Non "il codice è finito": "i
 | Task | Contenuto | Criterio principale |
 |---|---|---|
 | T-20 | ✅ Schema cassa (`02-MODELLO-DATI.md` §4.1) | Fatto — `0016_cassa_turni.sql`, 17 controlli automatici in `npm run verifica:migrazioni` |
-| T-21 | Registrazione incassi al banco senza conto | Un incasso rapido si registra in 2 tap |
+| T-21 | 🟨 Registrazione incassi al banco senza conto | **Superato dal disegno nuovo**, vedi sotto |
 | T-22 | ✅ Chiusura **di turno**, e la giornata come somma dei turni | Fatto — chi chiude scrive **un solo numero**, quanto c'è nel cassetto |
-| T-23 | Report giornata e settimana | Incassato per metodo, credito concesso, credito rientrato |
-| T-24 | Esportazione CSV | Il file si apre in Excel con gli importi in euro, virgola decimale, e le date leggibili |
-| T-25 | Classifica clienti — consumato e pagato, mese corrente e sempre | La somma della classifica del mese coincide con il totale battuto nel mese |
-| T-26 | Che cosa esce — prodotti venduti per periodo | Il numero di caffè del mese coincide con il conteggio fatto a mano su un giorno campione |
-| T-27 | Storico per prodotto dentro la scheda cliente, con filtro per giorno | Scelto un giorno, si vede che cosa ha preso quel cliente e a che ora |
+| T-23 | ✅ Report giornata e settimana | Fatto — `v_giornata`, schermata `/report` |
+| T-24 | ✅ Esportazione CSV | Fatto — punto e virgola, virgola decimale, BOM, date `12/08/2026`; 17 test |
+| T-25 | ✅ Classifica clienti — consumato e pagato, mese corrente e sempre | Fatto — `v_classifica_clienti`, con scritto in schermata che il banco resta fuori |
+| T-26 | ✅ Che cosa esce — prodotti venduti per periodo | Fatto — `v_venduto_prodotto`, più il rovescio: quello che **non** esce |
+| T-27 | ✅ Storico per giorno dentro la scheda cliente | Fatto — scelto un giorno si vede cosa ha preso e a che ora |
+
+### T-21 è stato superato, non saltato
+
+Il task chiedeva "un incasso rapido in 2 tap, senza aprire un conto". Nasceva quando la schermata
+di apertura era l'elenco dei conti e aprirne uno costava due tocchi: la scorciatoia serviva a
+saltarli.
+
+Da quando la schermata di apertura è la griglia (04-UX-MOBILE §3) quei due tocchi non ci sono
+più: prodotto → INCASSA → CONFERMA. Il conto viene creato lo stesso, ed è un bene — è quello che
+alimenta `v_venduto_prodotto` e le ore di punta. Una via che incassa *senza* registrare che cosa è
+uscito farebbe un buco proprio nei report appena scritti.
+
+Resta 🟨 e non ✅ perché il criterio è "2 tap cronometrati", e si cronometra al banco: è un
+criterio di T-18, non di questo task.
+
+### Che cosa è stato fatto davvero
+
+Una migrazione sola, `0018_report.sql`, con **quattro viste e nessuna tabella** — il dettaglio in
+`02-MODELLO-DATI.md` §4.3, i controlli automatici in `npm run verifica:migrazioni` (42 in tutto).
+Poi una schermata `/report` sotto Altro, e il filtro per giorno nella scheda cliente.
+
+Le due analisi che il documento suggeriva senza numerarle ci sono entrambe: **a che ora si lavora**
+(griglia ore × giorni sugli ultimi 90 giorni) e **chi è sparito** (clienti che non passano da tre
+settimane). La terza — la velocità di rientro dal debito — resta scartata, come deciso.
 
 ### Perché T-25, T-26 e T-27 costano poco
 

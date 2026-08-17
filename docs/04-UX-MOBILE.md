@@ -35,7 +35,7 @@ Tab bar fissa in basso, quattro voci. Niente menu a panino: un menu nascosto cos
 | **Banco** | Il conto in composizione, con la griglia prodotti. È la schermata di apertura (§3). |
 | **Clienti** | Elenco e ricerca clienti, accesso alle schede. |
 | **Crediti** | Chi deve soldi, ordinato per anzianità del debito. |
-| **Altro** | Listino, cassa (F2), magazzino (F3), impostazioni. |
+| **Altro** | Scontrini, listino, chiusura turno, report, magazzino (F3), impostazioni. |
 
 **Il credito in giro sta sulla scheda Crediti**, al posto della parola "Crediti", in rosso, quando c'è qualcosa da incassare. Era il numero grande della vecchia home; adesso che la home è la griglia dei prodotti non ha più una schermata tutta sua, ma non poteva finire dietro un tocco — è la ragione per cui esiste il progetto. Qui è piccolo e sempre a schermo: la mattina si legge accendendo l'app, senza cercarlo.
 
@@ -392,6 +392,15 @@ Nessun invio automatico. L'app prepara il messaggio, la persona decide se mandar
 - Gli storni restano visibili: è il punto di DEC-03. Quando il cliente chiede "ma io quella birra non l'ho presa", la risposta è sullo schermo.
 - Il menu **⋮** contiene: modifica anagrafica, imposta limite di credito, esporta estratto conto (PDF/testo da inviare), disattiva cliente.
 
+**Un giorno solo.** Accanto a MOVIMENTI c'è un selettore di data: scelto un giorno si vede che cosa
+ha preso quel cliente e **a che ora**. Serve quando qualcuno chiede "ma giovedì che cosa ho
+preso?", e scorrere all'indietro trenta righe per volta su un cliente abituale sono venti tocchi.
+
+In quella modalità **il saldo progressivo sparisce**, e non è una semplificazione: il progressivo
+si calcola partendo dal saldo di adesso e tornando indietro, quindi vale solo se le righe in mano
+sono le più recenti. Ancorarlo a un giovedì di tre settimane fa darebbe una colonna di numeri
+plausibili e tutti sbagliati. Al suo posto c'è l'ora, che è poi quello che si stava cercando.
+
 ---
 
 ## 9. Schermata: Listino
@@ -407,6 +416,64 @@ Si usa raramente, quindi non deve essere veloce — deve essere chiara.
   Si sposta il **prodotto**, non la variante: le varianti seguono, perché nella griglia sono un riquadro solo.
 - Quando si cambia un prezzo, un avviso ricorda che vale solo per le consumazioni future (DEC-05). Serve a rassicurare, non a chiedere conferma.
 - Un prodotto si "disattiva", non si elimina.
+
+---
+
+## 9.1 Schermata: Report
+
+Si apre la sera, da fermi, con le mani asciutte. **È l'unica schermata dell'app che non insegue
+nessun vincolo di tap**, e lo dichiara: qui si scorre, si legge, si confronta. Non scrive niente —
+se un numero è sbagliato si riscrive una vista, non si perde un dato.
+
+Richiede la rete e lo dice. Sono somme su mesi di movimenti: tenerle nella copia locale vorrebbe
+dire portarsi dietro tutto lo storico sul telefono per una schermata che si guarda due volte al
+giorno (`03-ARCHITETTURA.md` §4.5).
+
+**Periodo:** oggi, ieri, settimana, mese. "Settimana" è **la settimana in corso da lunedì**, non
+gli ultimi sette giorni: al banco "come sta andando la settimana" vuol dire quella, e un totale che
+comprende mezzo lunedì scorso non si confronta con niente.
+
+### La riga che evita la telefonata delle undici di sera
+
+Sotto credito concesso e rientrato c'è scritto, in italiano:
+
+> Venduto e incassato non coincidono di **150,00 €**: non manca niente, il credito in giro è
+> cresciuto.
+
+Senza quella frase, una giornata da 400 € di consumazioni con 250 € in cassa sembra un ammanco, e
+lo si cerca per mezz'ora. Le due grandezze **non devono** coincidere: la loro differenza è di
+quanto si è mosso il credito (`02-MODELLO-DATI.md` §4.3).
+
+### Che cosa esce, e che cosa no
+
+I quindici più venduti del periodo, con quantità e incasso. Sotto, ripiegato, **il rovescio**:
+quello che sta a catalogo e non è uscito. Ognuno occupa un riquadro nella griglia e allunga la
+ricerca a tutti — è la stessa lettura, dal basso.
+
+### Chi consuma
+
+Classifica per mese corrente o per sempre. In fondo, sempre visibile:
+
+> Qui ci sono solo i conti intestati. Quello battuto al banco non ha un nome e resta fuori.
+
+Non è una nota a piè di pagina: da quando la schermata di apertura è la griglia, i conti anonimi
+sono la maggioranza del giro. Senza quella riga il totale della classifica sembra sbagliato.
+
+Sotto, **chi non si vede da un po'**: i clienti che non passano da tre settimane, dal più assente.
+Le classifiche mostrano chi c'è, non chi manca — e chi manca è la domanda più utile delle due.
+
+### A che ora si lavora
+
+Una griglia ore × giorni degli ultimi novanta giorni: più pieno è il quadratino, più si è
+lavorato. Nessun numero dentro — a colpo d'occhio serve la forma, non il conteggio esatto delle 8
+di giovedì, che non cambia nessuna decisione. Novanta giorni e non sempre: le abitudini di un bar
+cambiano con la stagione, e una media su due anni descrive un locale che non esiste più.
+
+### Esportazione
+
+Due file, giornate e prodotti, sul periodo scelto. Si aprono in Excel italiano: punto e virgola
+come separatore, virgola decimale, date `12/08/2026`. Il criterio non è "è un CSV valido", è **"si
+apre in Excel"** — sono due cose diverse, e la seconda è quella che conta (`lib/dominio/csv.ts`).
 
 ---
 

@@ -96,6 +96,35 @@ I file `0005` e `0006` sono Fase 2 e Fase 3: **non eseguirli adesso**. Se li ese
 
 Il file `0007_correzioni_sicurezza.sql` serve solo ai database creati prima del 3 agosto 2026, quando le migrazioni avevano i difetti descritti in §4.1. Su un database nuovo non serve: `0001`–`0004` sono già corretti.
 
+### 4.0 Le migrazioni arrivate dopo
+
+Su un database già in funzione si esegue **solo quello che manca**, sempre in ordine di numero.
+Sono tutte idempotenti: rieseguirne una che c'è già non rompe niente.
+
+| File | Cosa aggiunge | Serve a |
+|---|---|---|
+| `0009`, `0012`, `0014` | prodotti nuovi | il catalogo del locale |
+| `0010_cancellazione_cliente.sql` | regola: chi ha movimenti si disattiva, non si cancella | scheda cliente |
+| `0011_scontrini.sql` | `v_scontrini` | schermata Scontrini |
+| `0013_storni_parziali.sql` | spostare una consumazione a un altro cliente | scheda cliente |
+| `0015_immutabilita_movimenti.sql` | i movimenti non si modificano nemmeno da SQL | DEC-03 |
+| `0016_cassa_turni.sql` | `impostazioni`, `chiusure_turno`, viste del turno | Chiudi turno |
+| `0017_correzione_scontrino.sql` | correzione della spunta scontrino, riservata al titolare | Scontrini |
+| `0018_report.sql` | **quattro viste, nessuna tabella** | schermata Report |
+
+**`0018` è quella nuova.** Finché non viene eseguita, la schermata Report dice che non riesce a
+leggere: non rompe nient'altro, perché non tocca nessuna tabella e nessuna schermata esistente.
+Dopo averla eseguita, per controllare:
+
+```sql
+select * from v_giornata order by giornata desc limit 7;
+select * from v_classifica_clienti order by consumato_sempre_cent desc limit 5;
+```
+
+Prima di eseguire qualunque migrazione, sul computer: `npm run verifica:migrazioni`. Le esegue
+tutte su un Postgres in memoria e controlla che facciano quello che dicono — l'8 agosto ha trovato
+un pagamento perso che nessuno aveva visto leggendo il file.
+
 L'ordine conta: le tabelle si riferiscono l'una all'altra, e una tabella non può riferirsi a una che non esiste ancora. Se sbagli ordine ottieni `relation "..." does not exist`: ricomincia da `0001`.
 
 Se compare la finestra **"Run without RLS / Run and enable RLS"**, scegli sempre **Run and enable RLS**.
