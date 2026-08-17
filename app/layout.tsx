@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { ProviderDati } from '@/components/shell/provider-dati';
+import { BloccoSchermo } from '@/components/shell/blocco-schermo';
 import { RegistraServiceWorker } from '@/components/shell/registra-service-worker';
 import './globals.css';
 
@@ -40,7 +41,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="it">
       <body className="min-h-full antialiased">
         <RegistraServiceWorker />
-        <ProviderDati>{children}</ProviderDati>
+        <ProviderDati>
+          <BloccoSchermo>{children}</BloccoSchermo>
+        </ProviderDati>
       </body>
     </html>
   );
