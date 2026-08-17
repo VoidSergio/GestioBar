@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { descriviSaldo, statoSaldo } from '@/lib/dominio/denaro';
-import { etichettaCliente, filtraClienti, ordinaPerRilevanza } from '@/lib/dominio/clienti';
+import { etichettaCliente, filtraClienti, ordinaPerFrequenza } from '@/lib/dominio/clienti';
 import { useClienti, useCreaCliente } from '@/lib/hooks/use-clienti';
+import { useFrequenzaClienti } from '@/lib/hooks/use-frequenza';
 import type { SaldoCliente } from '@/lib/supabase/tipi';
 
 interface Props {
@@ -35,6 +36,9 @@ export function RicercaCliente({
   mostraBanco = true,
 }: Props) {
   const { data: clienti } = useClienti();
+  // Se non è ancora arrivata, `ordinaPerFrequenza` ricasca sull'ordine
+  // dell'elenco clienti: un ordine peggiore, mai un elenco vuoto.
+  const { data: frequenza } = useFrequenzaClienti();
   const crea = useCreaCliente();
   const [ricerca, setRicerca] = useState('');
 
@@ -47,8 +51,8 @@ export function RicercaCliente({
   }, [onChiudi]);
 
   const visibili = useMemo(
-    () => ordinaPerRilevanza(filtraClienti(clienti ?? [], ricerca)).slice(0, 12),
-    [clienti, ricerca],
+    () => ordinaPerFrequenza(filtraClienti(clienti ?? [], ricerca), frequenza ?? {}).slice(0, 12),
+    [clienti, ricerca, frequenza],
   );
 
   const nomeNuovo = ricerca.trim();

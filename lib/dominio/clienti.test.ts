@@ -5,6 +5,8 @@ import {
   filtraClienti,
   etichettaCliente,
   ordinaPerRilevanza,
+  ordinaPerFrequenza,
+  contaConti,
   comeRimuovereCliente,
   haMovimenti,
 } from './clienti';
@@ -190,5 +192,78 @@ describe('haMovimenti', () => {
   it('basta un solo movimento', () => {
     expect(haMovimenti({ addebitato_cent: 120, pagato_cent: 0 })).toBe(true);
     expect(haMovimenti({ addebitato_cent: 0, pagato_cent: 500 })).toBe(true);
+  });
+});
+
+describe('contaConti', () => {
+  it('conta quanti conti ha aperto ciascun cliente', () => {
+    const conti = [
+      { cliente_id: 'a' },
+      { cliente_id: 'b' },
+      { cliente_id: 'a' },
+      { cliente_id: 'a' },
+    ];
+    expect(contaConti(conti)).toEqual({ a: 3, b: 1 });
+  });
+
+  it('i conti al banco non hanno un cliente e non contano', () => {
+    expect(contaConti([{ cliente_id: null }, { cliente_id: 'a' }, { cliente_id: null }])).toEqual({
+      a: 1,
+    });
+  });
+
+  it('senza conti restituisce un oggetto vuoto, non undefined', () => {
+    expect(contaConti([])).toEqual({});
+  });
+
+  it('è un oggetto semplice: sopravvive al giro in JSON della cache locale', () => {
+    const conteggio = contaConti([{ cliente_id: 'a' }, { cliente_id: 'a' }]);
+    // Una Map qui si salverebbe come {} e la frequenza sparirebbe a ogni
+    // riavvio senza che niente lo segnali.
+    expect(JSON.parse(JSON.stringify(conteggio))).toEqual(conteggio);
+  });
+});
+
+describe('ordinaPerFrequenza', () => {
+  it('prima chi viene più spesso, non chi deve di più', () => {
+    const abituale = saldo('Anna', 0);
+    const debitore = saldo('Bruno', 10_000);
+
+    const ordinati = ordinaPerFrequenza([debitore, abituale], { Anna: 20, Bruno: 1 });
+
+    expect(ordinati.map((c) => c.nome)).toEqual(['Anna', 'Bruno']);
+  });
+
+  it('a parità di frequenza vale l’ordine dell’elenco clienti: prima chi deve', () => {
+    const inPari = saldo('Anna', 0);
+    const deve = saldo('Bruno', 500);
+
+    expect(ordinaPerFrequenza([inPari, deve], { Anna: 3, Bruno: 3 }).map((c) => c.nome)).toEqual([
+      'Bruno',
+      'Anna',
+    ]);
+  });
+
+  it('chi non è passato di recente scende sotto, ma non sparisce', () => {
+    const nuovo = saldo('Zeno', 0);
+    const abituale = saldo('Anna', 0);
+
+    const ordinati = ordinaPerFrequenza([nuovo, abituale], { Anna: 5 });
+
+    expect(ordinati.map((c) => c.nome)).toEqual(['Anna', 'Zeno']);
+    expect(ordinati).toHaveLength(2);
+  });
+
+  it('senza dati di frequenza si comporta come ordinaPerRilevanza', () => {
+    const clienti = [saldo('Anna', 0), saldo('Bruno', 500), saldo('Carla', 2000)];
+    expect(ordinaPerFrequenza(clienti, {}).map((c) => c.nome)).toEqual(
+      ordinaPerRilevanza(clienti).map((c) => c.nome),
+    );
+  });
+
+  it('non modifica l’elenco di partenza', () => {
+    const clienti = [saldo('Anna', 0), saldo('Bruno', 0)];
+    ordinaPerFrequenza(clienti, { Bruno: 9 });
+    expect(clienti.map((c) => c.nome)).toEqual(['Anna', 'Bruno']);
   });
 });

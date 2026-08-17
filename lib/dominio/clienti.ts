@@ -93,12 +93,60 @@ export function etichettaCliente(c: { nome: string; soprannome: string | null })
  * incassare. Chi è in pari lo si apre di rado.
  */
 export function ordinaPerRilevanza(clienti: readonly SaldoCliente[]): SaldoCliente[] {
+  return [...clienti].sort(confrontoPerRilevanza);
+}
+
+/** Il confronto di `ordinaPerRilevanza`, riusato come spareggio altrove. */
+function confrontoPerRilevanza(a: SaldoCliente, b: SaldoCliente): number {
+  const aDeve = a.saldo_cent > 0;
+  const bDeve = b.saldo_cent > 0;
+  if (aDeve !== bDeve) return aDeve ? -1 : 1;
+  if (aDeve && bDeve) return b.saldo_cent - a.saldo_cent;
+  return a.nome.localeCompare(b.nome, 'it');
+}
+
+/**
+ * Quanti conti ha aperto ciascun cliente, contati da un elenco di conti.
+ *
+ * Un `Record` e non una `Map` perché questo numero finisce nella cache su
+ * IndexedDB, che passa da JSON: una Map si salverebbe come `{}` e la
+ * frequenza sparirebbe a ogni riavvio, senza che niente lo segnali.
+ */
+export function contaConti(conti: readonly { cliente_id: string | null }[]): Record<string, number> {
+  const conteggio: Record<string, number> = {};
+
+  for (const c of conti) {
+    if (!c.cliente_id) continue;
+    conteggio[c.cliente_id] = (conteggio[c.cliente_id] ?? 0) + 1;
+  }
+
+  return conteggio;
+}
+
+/**
+ * L'ordine del pannello "a chi?": prima chi viene più spesso.
+ *
+ * PERCHÉ NON È LO STESSO ORDINE DELL'ELENCO CLIENTI. Sono due domande
+ * diverse. L'elenco serve a cercare qualcuno per incassare, e lì conta chi
+ * deve di più. Qui invece si sta aprendo un conto, e conta chi è probabile
+ * che sia la persona davanti: nel bar è quello che viene tutte le mattine,
+ * non quello che deve di più. Con l'ordine sbagliato si finiva a digitare il
+ * nome di uno che passa ogni giorno perché stava sotto a un debitore che si
+ * vede una volta al mese.
+ *
+ * Chi non è passato nel periodo considerato non sparisce: scende sotto,
+ * ordinato come nell'elenco clienti. È il caso del cliente nuovo, che ha
+ * zero conti e va comunque trovato — ma dopo quelli veri.
+ */
+export function ordinaPerFrequenza<T extends SaldoCliente>(
+  clienti: readonly T[],
+  contiPerCliente: Readonly<Record<string, number>>,
+): T[] {
   return [...clienti].sort((a, b) => {
-    const aDeve = a.saldo_cent > 0;
-    const bDeve = b.saldo_cent > 0;
-    if (aDeve !== bDeve) return aDeve ? -1 : 1;
-    if (aDeve && bDeve) return b.saldo_cent - a.saldo_cent;
-    return a.nome.localeCompare(b.nome, 'it');
+    const quantiA = contiPerCliente[a.id] ?? 0;
+    const quantiB = contiPerCliente[b.id] ?? 0;
+    if (quantiA !== quantiB) return quantiB - quantiA;
+    return confrontoPerRilevanza(a, b);
   });
 }
 
