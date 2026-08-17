@@ -214,5 +214,127 @@ eq('due turni', 2, giornata.n_turni);
 eq('incassato in contanti', 27650, giornata.incassato_contanti_cent);
 eq('differenza della giornata', -150, giornata.differenza_cent);
 
+
+console.log("\nI REPORT (0018)");
+// Una giornata inventata apposta, con dentro tutti i casi che si confondono:
+// un conto pagato subito al banco, uno lasciato a credito, e un debito
+// vecchio che rientra.
+const anna = await uno("insert into clienti (nome) values ('Anna') returning id");
+
+// 1. Banco: 2 caffè, pagati subito in contanti.
+const banco = await uno(
+  `insert into conti (op_id) values (gen_random_uuid()) returning id`
+);
+await db.exec(`insert into righe_conto (conto_id, descrizione, prezzo_unitario_cent, quantita, op_id)
+  values ('${banco.id}', 'Caffè', 120, 2, gen_random_uuid())`);
+await db.exec(`insert into pagamenti (conto_id, importo_cent, metodo, scontrino_battuto, op_id)
+  values ('${banco.id}', 240, 'contanti', true, gen_random_uuid())`);
+
+// 2. Anna: uno spritz da 5,00 lasciato a credito.
+const contoAnna = await uno(
+  `insert into conti (cliente_id, op_id) values ('${anna.id}', gen_random_uuid()) returning id`
+);
+await db.exec(`insert into righe_conto (conto_id, descrizione, prezzo_unitario_cent, quantita, op_id)
+  values ('${contoAnna.id}', 'Spritz', 500, 1, gen_random_uuid())`);
+
+// 3. Anna salda 3,00 di debito vecchio, con carta e senza conto collegato.
+await db.exec(`insert into pagamenti (cliente_id, importo_cent, metodo, op_id)
+  values ('${anna.id}', 300, 'carta', gen_random_uuid())`);
+
+const oggi = await uno(
+  "select * from v_giornata where giornata = (now() at time zone 'Europe/Rome')::date"
+);
+
+// Mario, più in alto, ha già un caffè da 1,20 e un pagamento da 1,20.
+eq('venduto della giornata', 120 + 240 + 500, oggi.venduto_cent);
+eq('incassato in contanti', 120 + 240, oggi.contanti_cent);
+eq('incassato con carta', 300, oggi.carta_cent);
+eq('credito rientrato: i pagamenti senza conto', 120 + 300, oggi.credito_rientrato_cent);
+eq('incassato sui conti di oggi', 240, oggi.incassato_su_conti_cent);
+eq('credito concesso: lo spritz di Anna e il caffè di Mario', 500 + 120, oggi.credito_concesso_cent);
+
+// Le due identità che tengono in piedi tutta la vista.
+eq(
+  'incassato = sui conti + credito rientrato',
+  oggi.incassato_cent,
+  oggi.incassato_su_conti_cent + oggi.credito_rientrato_cent
+);
+eq(
+  'venduto = sui conti + credito concesso',
+  oggi.venduto_cent,
+  oggi.incassato_su_conti_cent + oggi.credito_concesso_cent
+);
+// Due: quello del banco qui sopra e quello di Mario, che la prova sulla
+// correzione della spunta ha lasciato battuto.
+eq('gli scontrini battuti si contano', 2, oggi.n_scontrini);
+
+console.log('\nGLI STORNI SI TOLGONO DA SOLI, SENZA FILTRI');
+const rigaSpritz = await uno(
+  `select id from righe_conto where descrizione = 'Spritz'`
+);
+await db.exec(`insert into righe_conto (conto_id, descrizione, prezzo_unitario_cent, quantita, storno_di, op_id)
+  values ('${contoAnna.id}', 'Spritz', 500, -1, '${rigaSpritz.id}', gen_random_uuid())`);
+
+const dopoStorno = await uno(
+  "select * from v_giornata where giornata = (now() at time zone 'Europe/Rome')::date"
+);
+eq('lo spritz stornato esce dal venduto', 120 + 240, dopoStorno.venduto_cent);
+eq(
+  'e anche dal credito concesso',
+  120,
+  dopoStorno.credito_concesso_cent
+);
+eq(
+  'lo Spritz sparisce da quello che esce, non resta a zero e nemmeno a uno',
+  0,
+  (await uno("select coalesce(sum(quantita), 0) q from v_venduto_prodotto where descrizione = 'Spritz'")).q
+);
+
+console.log('\nCHE COSA ESCE, E CHI CONSUMA');
+eq(
+  'tre caffè in tutto: due al banco e uno di Mario',
+  3,
+  (await uno("select sum(quantita) q from v_venduto_prodotto where descrizione = 'Caffè'")).q
+);
+eq(
+  'il banco non ha un cliente e resta fuori dalla classifica',
+  120,
+  (await uno(`select consumato_sempre_cent c from v_classifica_clienti where nome = 'Mario'`)).c
+);
+eq(
+  "Anna ha consumato zero: lo spritz è stato stornato",
+  0,
+  (await uno(`select consumato_sempre_cent c from v_classifica_clienti where nome = 'Anna'`)).c
+);
+eq(
+  'ma ha pagato 3,00',
+  300,
+  (await uno(`select pagato_sempre_cent p from v_classifica_clienti where nome = 'Anna'`)).p
+);
+eq(
+  'un cliente senza movimenti sta in classifica a zero, non manca',
+  0,
+  (await uno(`insert into clienti (nome) values ('Nuovo') returning id`)) &&
+    (await uno(`select consumato_sempre_cent c from v_classifica_clienti where nome = 'Nuovo'`)).c
+);
+eq(
+  'la somma della classifica coincide con il venduto ai clienti',
+  (await uno(`select coalesce(sum(r.importo_cent), 0) v from righe_conto r
+     join conti co on co.id = r.conto_id where co.cliente_id is not null`)).v,
+  (await uno('select sum(consumato_sempre_cent) c from v_classifica_clienti')).c
+);
+
+console.log('\nA CHE ORA SI LAVORA');
+eq(
+  "le ore di punta contano gli stessi pezzi del venduto degli ultimi 90 giorni",
+  (await uno("select sum(quantita) q from righe_conto where creato_il >= now() - interval '90 days'")).q,
+  (await uno('select sum(pezzi) p from v_ore_di_punta')).p
+);
+eq(
+  'il giorno della settimana è quello ISO: lunedì 1, domenica 7',
+  (await uno("select extract(isodow from (now() at time zone 'Europe/Rome'))::int d")).d,
+  (await uno('select min(giorno_settimana) g from v_ore_di_punta')).g
+);
+
 console.log(`\n${passati} verificati, ${falliti} falliti\n`);
 process.exit(falliti ? 1 : 0);

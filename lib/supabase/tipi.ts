@@ -264,6 +264,84 @@ export type RiepilogoGiornata = {
   differenza_cent: number;
 };
 
+/* ------------------------------------------------------------ i report */
+
+/**
+ * Una giornata di calendario, letta dai movimenti (0018).
+ *
+ * I quattro numeri non si sommano fra loro. Le identità che li legano, e che
+ * i controlli di `npm run verifica:migrazioni` verificano:
+ *
+ *   incassato = incassato_su_conti + credito_rientrato
+ *   venduto   = incassato_su_conti + credito_concesso
+ *
+ * Quindi `venduto − incassato` non è un ammanco: è di quanto è cresciuto il
+ * credito in giro.
+ *
+ * Va tenuta distinta da `RiepilogoGiornata`, che somma le **chiusure di
+ * turno** — cioè quanto è stato dichiarato contando il cassetto. Questa
+ * legge i movimenti, e il turno può scavalcare la mezzanotte.
+ */
+export type Giornata = {
+  giornata: string;
+  venduto_cent: number;
+  pezzi: number;
+  n_conti: number;
+  incassato_cent: number;
+  contanti_cent: number;
+  carta_cent: number;
+  altro_cent: number;
+  incassato_su_conti_cent: number;
+  credito_rientrato_cent: number;
+  credito_concesso_cent: number;
+  n_scontrini: number;
+  n_senza_scontrino: number;
+};
+
+/**
+ * Che cosa è uscito, per giornata e per nome.
+ *
+ * Il nome è quello congelato sulla riga (DEC-05): se un prodotto viene
+ * rinominato, le vendite vecchie restano sotto il nome vecchio. È voluto —
+ * l'alternativa sarebbe attribuire metà delle vendite a un nome che allora
+ * non esisteva.
+ */
+export type VendutoProdotto = {
+  giornata: string;
+  descrizione: string;
+  quantita: number;
+  importo_cent: number;
+};
+
+/**
+ * La classifica dei clienti (T-25).
+ *
+ * **Il banco non c'è, per costruzione**: i conti anonimi non hanno cliente.
+ * Risponde a "chi fra i clienti che conosco consuma di più", non a "da dove
+ * vengono i miei soldi".
+ */
+export type RigaClassifica = {
+  cliente_id: string;
+  nome: string;
+  soprannome: string | null;
+  attivo: boolean;
+  consumato_mese_cent: number;
+  consumato_sempre_cent: number;
+  pezzi_sempre: number;
+  pagato_mese_cent: number;
+  pagato_sempre_cent: number;
+  ultima_consumazione_il: string | null;
+};
+
+/** Quanto si lavora, per giorno della settimana e ora. `isodow`: 1 = lunedì. */
+export type OraDiPunta = {
+  giorno_settimana: number;
+  ora: number;
+  pezzi: number;
+  importo_cent: number;
+  n_conti: number;
+};
+
 /* ------------------------------------------------- schema per il client */
 
 /**
@@ -352,6 +430,10 @@ export interface Database {
       v_scontrini: { Row: MovimentoScontrino; Relationships: [] };
       v_turno_corrente: { Row: TurnoCorrente; Relationships: [] };
       v_riepilogo_giornata: { Row: RiepilogoGiornata; Relationships: [] };
+      v_giornata: { Row: Giornata; Relationships: [] };
+      v_venduto_prodotto: { Row: VendutoProdotto; Relationships: [] };
+      v_classifica_clienti: { Row: RigaClassifica; Relationships: [] };
+      v_ore_di_punta: { Row: OraDiPunta; Relationships: [] };
     };
     Functions: Record<string, never>;
     Enums: Record<string, never>;
