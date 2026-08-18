@@ -358,6 +358,77 @@ export type OraDiPunta = {
   n_conti: number;
 };
 
+/* --------------------------------------------------------- magazzino */
+
+/**
+ * Le quantità sono **interi in millesimi**, per la stessa ragione per cui il
+ * denaro è in centesimi (DEC-04): `numeric` esce da PostgREST e diventa un
+ * decimale in virgola mobile, e seimila somme al mese lo fanno derivare.
+ * `1250` è 1,250 kg. Le funzioni stanno in `lib/dominio/magazzino.ts`.
+ */
+export type UnitaMisura = 'pz' | 'kg' | 'l' | 'conf';
+
+export type Fornitore = {
+  id: string;
+  nome: string;
+  telefono: string | null;
+  email: string | null;
+  note: string | null;
+  attivo: boolean;
+  creato_il: string;
+  creato_da: string | null;
+};
+
+export type Articolo = {
+  id: string;
+  nome: string;
+  unita: UnitaMisura;
+  scorta_minima_milli: number;
+  fornitore_id: string | null;
+  costo_ultimo_cent: number | null;
+  attivo: boolean;
+  creato_il: string;
+  creato_da: string | null;
+};
+
+export type TipoMovimentoMagazzino = 'carico' | 'scarico' | 'rettifica' | 'scarto';
+
+export type MovimentoMagazzino = {
+  id: string;
+  articolo_id: string;
+  tipo: TipoMovimentoMagazzino;
+  quantita_milli: number;
+  costo_unitario_cent: number | null;
+  causale: string | null;
+  riga_conto_id: string | null;
+  creato_il: string;
+  creato_da: string | null;
+  op_id: string;
+};
+
+/** La distinta base: quanto articolo consuma un prodotto venduto. */
+export type Composizione = {
+  prodotto_id: string;
+  articolo_id: string;
+  quantita_milli: number;
+};
+
+/** La giacenza è la somma dei movimenti: non esiste un contatore (DEC-02). */
+export type Giacenza = {
+  id: string;
+  nome: string;
+  unita: UnitaMisura;
+  scorta_minima_milli: number;
+  fornitore_id: string | null;
+  fornitore: string | null;
+  costo_ultimo_cent: number | null;
+  giacenza_milli: number;
+  sotto_scorta: boolean;
+  /** Creato e mai caricato: da comprare è un'altra cosa. */
+  mai_movimentato: boolean;
+  ultimo_carico_il: string | null;
+};
+
 /* ------------------------------------------------- schema per il client */
 
 /**
@@ -422,6 +493,34 @@ export interface Database {
         Update: Partial<Impostazione>;
         Relationships: [];
       };
+      fornitori: {
+        Row: Fornitore;
+        Insert: Partial<Fornitore> & { nome: string };
+        Update: Partial<Fornitore>;
+        Relationships: [];
+      };
+      articoli: {
+        Row: Articolo;
+        Insert: Partial<Articolo> & { nome: string };
+        Update: Partial<Articolo>;
+        Relationships: [];
+      };
+      movimenti_magazzino: {
+        Row: MovimentoMagazzino;
+        Insert: Partial<MovimentoMagazzino> & {
+          articolo_id: string;
+          tipo: TipoMovimentoMagazzino;
+          quantita_milli: number;
+        };
+        Update: Partial<MovimentoMagazzino>;
+        Relationships: [];
+      };
+      composizioni: {
+        Row: Composizione;
+        Insert: Composizione;
+        Update: Partial<Composizione>;
+        Relationships: [];
+      };
       chiusure_turno: {
         Row: ChiusuraTurno;
         // Le tre colonne calcolate le scrive il database: se comparissero
@@ -451,6 +550,7 @@ export interface Database {
       v_classifica_clienti: { Row: RigaClassifica; Relationships: [] };
       v_ore_di_punta: { Row: OraDiPunta; Relationships: [] };
       v_operatore_giornata: { Row: OperatoreGiornata; Relationships: [] };
+      v_giacenze: { Row: Giacenza; Relationships: [] };
     };
     Functions: Record<string, never>;
     Enums: Record<string, never>;

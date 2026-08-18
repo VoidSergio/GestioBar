@@ -1,77 +1,28 @@
--- Gestionale Bar — migrazione 0006 — FASE 3
--- NON ESEGUIRE finché la Fase 2 non è stabile.
-
-create table fornitori (
-  id        uuid primary key default gen_random_uuid(),
-  nome      text not null,
-  telefono  text,
-  email     text,
-  note      text,
-  attivo    boolean not null default true,
-  creato_il timestamptz not null default now()
-);
-
-create table articoli (
-  id              uuid primary key default gen_random_uuid(),
-  nome            text not null,
-  unita           text not null default 'pz'
-                  check (unita in ('pz', 'kg', 'l', 'conf')),
-  scorta_minima   numeric(10,3) not null default 0,
-  fornitore_id    uuid references fornitori(id),
-  costo_ultimo_cent integer,
-  attivo          boolean not null default true,
-  creato_il       timestamptz not null default now()
-);
-
-create table movimenti_magazzino (
-  id           uuid primary key default gen_random_uuid(),
-  articolo_id  uuid not null references articoli(id),
-  tipo         text not null check (tipo in ('carico', 'scarico', 'rettifica', 'scarto')),
-  quantita     numeric(10,3) not null check (quantita <> 0),
-  costo_unitario_cent integer,
-  causale      text,
-  riga_conto_id uuid references righe_conto(id),
-  creato_il    timestamptz not null default now(),
-  creato_da    uuid references profili(id),
-  op_id        uuid not null unique
-);
-
-create index idx_movimenti_articolo on movimenti_magazzino (articolo_id, creato_il desc);
-
--- distinta base: quanto articolo consuma un prodotto venduto
-create table composizioni (
-  prodotto_id uuid not null references prodotti(id) on delete cascade,
-  articolo_id uuid not null references articoli(id) on delete cascade,
-  quantita    numeric(10,3) not null check (quantita > 0),
-  primary key (prodotto_id, articolo_id)
-);
-
-create or replace view v_giacenze
-with (security_invoker = on) as
-select
-  a.id,
-  a.nome,
-  a.unita,
-  a.scorta_minima,
-  a.fornitore_id,
-  coalesce(sum(m.quantita), 0) as giacenza,
-  coalesce(sum(m.quantita), 0) <= a.scorta_minima as sotto_scorta
-from articoli a
-left join movimenti_magazzino m on m.articolo_id = a.id
-where a.attivo
-group by a.id, a.nome, a.unita, a.scorta_minima, a.fornitore_id;
-
--- RLS e policy: le tabelle nascono protette
-alter table fornitori enable row level security;
-alter table articoli enable row level security;
-alter table movimenti_magazzino enable row level security;
-alter table composizioni enable row level security;
-
-create policy "accesso autenticati" on fornitori
-  for all to authenticated using (true) with check (true);
-create policy "accesso autenticati" on articoli
-  for all to authenticated using (true) with check (true);
-create policy "accesso autenticati" on movimenti_magazzino
-  for all to authenticated using (true) with check (true);
-create policy "accesso autenticati" on composizioni
-  for all to authenticated using (true) with check (true);
+-- Gestionale Bar — migrazione 0006 — SOSTITUITA, NON ESEGUIRE
+--
+-- Questo file conteneva la prima bozza dello schema di magazzino. Non è mai
+-- stato eseguito da nessuna parte, ed è stato riscritto in
+-- `0020_magazzino.sql`. Resta qui vuoto invece di sparire perché è citato in
+-- `05-ROADMAP.md` T-02 e in `06-SETUP-SUPABASE.md` §4, e un file che manca
+-- fa cercare per mezz'ora una cosa che non c'è.
+--
+-- CHE COSA È CAMBIATO, E PERCHÉ.
+--
+-- La bozza teneva le quantità in `numeric(10,3)`. Dentro Postgres sarebbe
+-- stato esatto; il problema comincia quando quel numero esce. PostgREST lo
+-- consegna a JavaScript, dove il decimale esatto non esiste — 0,1 + 0,2 non
+-- fa 0,3. Un caffè scarica 7 g di grani, duecento caffè al giorno per un mese
+-- sono seimila somme, e la giacenza comincia a finire con ,00000000004.
+-- Poi la si confronta con l'inventario contato a mano e non torna mai.
+--
+-- È la stessa ragione per cui il denaro sta in centesimi interi (DEC-04).
+-- In `0020` le quantità sono **interi in millesimi**.
+--
+-- Sono cambiate anche altre tre cose:
+--   - i segni sono vincolati al tipo di movimento (un "carico" negativo non
+--     si può più scrivere);
+--   - i movimenti sono immutabili come tutti gli altri (DEC-03);
+--   - lo scarico automatico non può far fallire l'inserimento di una riga di
+--     conto, cioè non può far perdere una vendita.
+--
+-- Lo stesso è successo a `0005_fase2_cassa.sql`, sostituito da `0016`.

@@ -24,7 +24,11 @@ import { fileURLToPath } from 'node:url';
 const RADICE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIGRAZIONI = path.join(RADICE, 'supabase', 'migrations');
 
-/** Fase 2 e 3 non ancora riscritte: non si eseguono (05-ROADMAP.md T-02). */
+/**
+ * File sostituiti da altri: restano nel repository perché sono citati nei
+ * documenti, ma non contengono più niente da eseguire.
+ * `0006` → `0020_magazzino.sql`.
+ */
 const NON_ESEGUIRE = new Set(['0006_fase3_magazzino.sql']);
 
 let PGlite;
@@ -459,6 +463,155 @@ eq(
   'il titolare invece sì',
   true,
   (await uno('select count(*) > 0 n from v_giornata')).n
+);
+
+
+console.log("\nMAGAZZINO (0020)");
+// Il titolare è `utente`. Torna lui perché le anagrafiche sono sue.
+await db.exec(`select set_config('test.uid', '${utente.id}', false)`);
+
+const fornitore = await uno(
+  "insert into fornitori (nome) values ('Torrefazione') returning id"
+);
+const grani = await uno(`insert into articoli (nome, unita, scorta_minima_milli, fornitore_id)
+  values ('Caffè in grani', 'kg', 2000, '${fornitore.id}') returning id`);
+const latte = await uno(`insert into articoli (nome, unita, scorta_minima_milli)
+  values ('Latte', 'l', 5000) returning id`);
+
+eq(
+  'un articolo nasce a zero, non manca dalle giacenze',
+  0,
+  (await uno(`select giacenza_milli g from v_giacenze where id = '${grani.id}'`)).g
+);
+eq(
+  'e si distingue "mai movimentato" da "finito"',
+  true,
+  (await uno(`select mai_movimentato m from v_giacenze where id = '${grani.id}'`)).m
+);
+
+console.log('\nCARICHI E SEGNI');
+await db.exec(`insert into movimenti_magazzino (articolo_id, tipo, quantita_milli, costo_unitario_cent)
+  values ('${grani.id}', 'carico', 5000, 1800)`);
+eq(
+  'il carico aumenta la giacenza della quantità esatta (T-32)',
+  5000,
+  (await uno(`select giacenza_milli g from v_giacenze where id = '${grani.id}'`)).g
+);
+
+await deveFallire(
+  'un carico negativo non si scrive: sparirebbe dentro una somma',
+  `insert into movimenti_magazzino (articolo_id, tipo, quantita_milli)
+     values ('${grani.id}', 'carico', -1000)`,
+  'segno_coerente_col_tipo'
+);
+await deveFallire(
+  'e nemmeno uno scarico positivo',
+  `insert into movimenti_magazzino (articolo_id, tipo, quantita_milli)
+     values ('${grani.id}', 'scarico', 1000)`,
+  'segno_coerente_col_tipo'
+);
+await deveFallire(
+  'un movimento non si modifica (DEC-03)',
+  "update movimenti_magazzino set quantita_milli = 1",
+  'non si modifica'
+);
+await deveFallire(
+  'né si cancella',
+  'delete from movimenti_magazzino',
+  'non si modifica'
+);
+
+console.log('\nSOTTO SCORTA (T-35)');
+await db.exec(`insert into movimenti_magazzino (articolo_id, tipo, quantita_milli, causale)
+  values ('${grani.id}', 'scarico', -3500, 'prova')`);
+eq(
+  'giacenza 1,500 kg sotto una scorta minima di 2,000',
+  true,
+  (await uno(`select sotto_scorta s from v_giacenze where id = '${grani.id}'`)).s
+);
+eq(
+  "l'articolo mai caricato resta fuori dal conteggio degli urgenti",
+  true,
+  (await uno(`select mai_movimentato m from v_giacenze where id = '${latte.id}'`)).m
+);
+
+console.log('\nSCARICO AUTOMATICO (T-33, T-34)');
+const caffeProdotto = await uno(
+  "select id from prodotti where nome_base = 'Caffè' and variante = 'normale'"
+);
+await db.exec(`insert into composizioni (prodotto_id, articolo_id, quantita_milli)
+  values ('${caffeProdotto.id}', '${grani.id}', 7)`);
+
+const contoMag = await uno(
+  'insert into conti (op_id) values (gen_random_uuid()) returning id'
+);
+const primaSpento = (await uno(`select giacenza_milli g from v_giacenze where id = '${grani.id}'`)).g;
+await db.exec(`insert into righe_conto (conto_id, prodotto_id, descrizione, prezzo_unitario_cent, quantita, op_id)
+  values ('${contoMag.id}', '${caffeProdotto.id}', 'Caffè', 120, 2, gen_random_uuid())`);
+eq(
+  'da spento non tocca niente: è il valore di partenza',
+  primaSpento,
+  (await uno(`select giacenza_milli g from v_giacenze where id = '${grani.id}'`)).g
+);
+
+await db.exec("update impostazioni set valore = 'si' where chiave = 'scarico_automatico'");
+await db.exec(`insert into righe_conto (conto_id, prodotto_id, descrizione, prezzo_unitario_cent, quantita, op_id)
+  values ('${contoMag.id}', '${caffeProdotto.id}', 'Caffè', 120, 2, gen_random_uuid())`);
+eq(
+  'due caffè scaricano 14 g di grani',
+  primaSpento - 14,
+  (await uno(`select giacenza_milli g from v_giacenze where id = '${grani.id}'`)).g
+);
+
+const rigaDaStornare = await uno(`select id from righe_conto
+  where prodotto_id = '${caffeProdotto.id}' order by creato_il desc limit 1`);
+await db.exec(`insert into righe_conto (conto_id, prodotto_id, descrizione, prezzo_unitario_cent, quantita, storno_di, op_id)
+  values ('${contoMag.id}', '${caffeProdotto.id}', 'Caffè', 120, -1, '${rigaDaStornare.id}', gen_random_uuid())`);
+eq(
+  'uno storno rimette dentro la merce, come rettifica e non come carico',
+  primaSpento - 7,
+  (await uno(`select giacenza_milli g from v_giacenze where id = '${grani.id}'`)).g
+);
+eq(
+  'e lo dice nella causale',
+  true,
+  (await uno(`select causale like 'Storno:%' c from movimenti_magazzino
+     where tipo = 'rettifica' order by creato_il desc limit 1`)).c
+);
+
+console.log('\nIL MAGAZZINO NON PUÒ BLOCCARE LA CASSA');
+// Una distinta base che punta a un articolo disattivato, o un vincolo che
+// salta: la riga di conto deve entrare lo stesso.
+await db.exec(`insert into composizioni (prodotto_id, articolo_id, quantita_milli)
+  values ('${caffeProdotto.id}', '${latte.id}', 0 + 1)`);
+await db.exec(`drop trigger trg_scarica_magazzino on righe_conto`);
+await db.exec(`create or replace function scarica_magazzino() returns trigger
+  language plpgsql security definer set search_path = '' as $$
+  begin
+    raise exception 'guasto finto';
+  exception when others then return null;
+  end; $$`);
+await db.exec(`create trigger trg_scarica_magazzino after insert on righe_conto
+  for each row execute function scarica_magazzino()`);
+
+const prima = (await uno(`select count(*) n from righe_conto`)).n;
+await db.exec(`insert into righe_conto (conto_id, prodotto_id, descrizione, prezzo_unitario_cent, quantita, op_id)
+  values ('${contoMag.id}', '${caffeProdotto.id}', 'Caffè', 120, 1, gen_random_uuid())`);
+eq(
+  'con il magazzino guasto la vendita si registra lo stesso',
+  Number(prima) + 1,
+  (await uno('select count(*) n from righe_conto')).n
+);
+
+console.log('\nINVENTARIO (T-36)');
+const giacenzaPrima = (await uno(`select giacenza_milli g from v_giacenze where id = '${grani.id}'`)).g;
+// Contati 1,000 kg: la rettifica è la differenza, non il valore contato.
+await db.exec(`insert into movimenti_magazzino (articolo_id, tipo, quantita_milli, causale)
+  values ('${grani.id}', 'rettifica', ${1000 - Number(giacenzaPrima)}, 'Inventario')`);
+eq(
+  "dopo l'inventario la giacenza è quella contata",
+  1000,
+  (await uno(`select giacenza_milli g from v_giacenze where id = '${grani.id}'`)).g
 );
 
 console.log(`\n${passati} verificati, ${falliti} falliti\n`);
