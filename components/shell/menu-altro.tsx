@@ -35,6 +35,12 @@ const VOCI = [
     descrizione: 'Conta il cassetto, ritira, lascia il fondo',
   },
   {
+    href: '/magazzino',
+    icona: '📦',
+    titolo: 'Magazzino',
+    descrizione: 'Giacenze, carichi, che cosa manca',
+  },
+  {
     href: '/blocco',
     icona: '🔒',
     titolo: 'Blocco schermo',
@@ -56,10 +62,6 @@ const SOLO_TITOLARE = [
     titolo: 'Persone',
     descrizione: 'Chi lavora, chi è titolare, chi non c’è più',
   },
-] as const;
-
-const IN_ARRIVO = [
-  { icona: '📦', titolo: 'Magazzino', quando: 'giacenze e carichi — Fase 3' },
 ] as const;
 
 export function MenuAltro({ ruolo }: { ruolo: Ruolo | null }) {
@@ -96,23 +98,6 @@ export function MenuAltro({ ruolo }: { ruolo: Ruolo | null }) {
                   →
                 </span>
               </Link>
-            </li>
-          ))}
-        </ul>
-
-        <p className="px-5 pb-2 pt-6 text-xs font-semibold uppercase text-[var(--color-testo-tenue)]">
-          In arrivo
-        </p>
-        <ul className="divide-y divide-[var(--color-bordo)] border-y border-[var(--color-bordo)] opacity-50">
-          {IN_ARRIVO.map((v) => (
-            <li key={v.titolo} className="flex min-h-16 items-center gap-4 px-5 py-3">
-              <span aria-hidden className="text-2xl grayscale">
-                {v.icona}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium">{v.titolo}</span>
-                <span className="block text-xs text-[var(--color-testo-tenue)]">{v.quando}</span>
-              </span>
             </li>
           ))}
         </ul>

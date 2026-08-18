@@ -33,7 +33,15 @@ const VOCI = [
 ] as const;
 
 /** Quello che si raggiunge da "Altro" e che deve tenerne accesa la scheda. */
-const SOTTO_ALTRO = ['/scontrini', '/listino', '/turno', '/report', '/persone', '/blocco'] as const;
+const SOTTO_ALTRO = [
+  '/scontrini',
+  '/listino',
+  '/turno',
+  '/report',
+  '/persone',
+  '/blocco',
+  '/magazzino',
+] as const;
 
 export function BarraNavigazione() {
   const percorso = usePathname();
