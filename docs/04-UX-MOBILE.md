@@ -35,7 +35,7 @@ Tab bar fissa in basso, quattro voci. Niente menu a panino: un menu nascosto cos
 | **Banco** | Il conto in composizione, con la griglia prodotti. È la schermata di apertura (§3). |
 | **Clienti** | Elenco e ricerca clienti, accesso alle schede. |
 | **Crediti** | Chi deve soldi, ordinato per anzianità del debito. |
-| **Altro** | Scontrini, listino, chiusura turno, report, magazzino (F3), impostazioni. |
+| **Altro** | Scontrini, listino, chiusura turno, magazzino, blocco schermo; per il titolare anche report e persone. |
 
 **Il credito in giro sta sulla scheda Crediti**, al posto della parola "Crediti", in rosso, quando c'è qualcosa da incassare. Era il numero grande della vecchia home; adesso che la home è la griglia dei prodotti non ha più una schermata tutta sua, ma non poteva finire dietro un tocco — è la ragione per cui esiste il progetto. Qui è piccolo e sempre a schermo: la mattina si legge accendendo l'app, senza cercarlo.
 
@@ -474,6 +474,64 @@ cambiano con la stagione, e una media su due anni descrive un locale che non esi
 Due file, giornate e prodotti, sul periodo scelto. Si aprono in Excel italiano: punto e virgola
 come separatore, virgola decimale, date `12/08/2026`. Il criterio non è "è un CSV valido", è **"si
 apre in Excel"** — sono due cose diverse, e la seconda è quella che conta (`lib/dominio/csv.ts`).
+
+---
+
+## 9.2 Schermata: Magazzino
+
+Altro → Magazzino. Come il listino e i report, è una schermata da fermi: si apre quando arriva il
+fornitore o la sera.
+
+**In cima c'è solo quello che manca.** Un magazzino si guarda per sapere che cosa comprare, non per
+leggere sessanta righe che vanno bene. L'elenco completo sta sotto.
+
+Un articolo creato e mai caricato **non** compare fra le cose da comprare: è un'anagrafica appena
+scritta, non una scorta finita. Sono due stati diversi e l'elenco li distingue.
+
+### Le quantità si digitano come gli importi
+
+Stesso tastierino, stessa regola: le cifre entrano da destra e la virgola non si scrive mai. Quello
+che cambia è **quanto vale l'ultima cifra**:
+
+```
+kg, l  →  1250  =  1,250
+pz, conf → 3    =  3
+```
+
+Senza questa distinzione, battere "3" su una cassa di bottiglie darebbe 0,003 bottiglie. Il pannello
+lo scrive sotto il numero, perché davanti a un bancale deve essere leggibile senza pensarci.
+
+### Il segno lo mette il programma
+
+Tre pulsanti: **Carico** (è arrivata merce), **Scarto** (rotto, scaduto, buttato), **Correzione**.
+Chi registra uno scarto batte "2 bottiglie", non "meno due": il segno è una regola del database, non
+una cosa da ricordarsi con la fila davanti.
+
+### Lo scarico automatico nasce spento, e la schermata dice perché
+
+> In un bar il consumo vero non coincide mai con quello teorico: sfridi, omaggi, il caffè venuto
+> male, la dose a occhio. Acceso senza inventari periodici produce numeri falsi **che sembrano
+> veri**, ed è peggio che non avere il magazzino — perché sui numeri falsi si fanno gli ordini.
+
+Non è una nota tecnica: chi lo accende si sta impegnando a fare gli inventari, e deve saperlo prima
+di toccare l'interruttore.
+
+### Inventario
+
+Si conta un articolo alla volta e **si registra subito**. Un inventario che chiede di riempire
+trenta caselle e poi salvare, con il telefono in mano davanti a uno scaffale, si interrompe a metà e
+non si salva mai.
+
+Quello che viene scritto è la **differenza**, non il contato: i movimenti si sommano, quindi un
+"contato 1 kg" registrato come movimento aggiungerebbe un chilo a quello che risultava già. E la
+differenza si legge in italiano — "Mancano 0,5 kg", non "−0,5" — perché davanti a uno scaffale, con
+il telefono in una mano, un segno meno si legge male e si interpreta peggio.
+
+### Chi può fare cosa
+
+Un barista vede le giacenze e registra uno scarto: la bottiglia la rompe chi sta al banco, e se
+registrarla richiedesse il titolare non la registrerebbe nessuno. Anagrafiche, distinta base e
+interruttore dello scarico automatico sono del titolare.
 
 ---
 

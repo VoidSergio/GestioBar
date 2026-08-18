@@ -30,7 +30,7 @@
 | T-17 PWA | 🟨 quasi | service worker scritto a mano, pagina offline. **Da provare sui telefoni e con Lighthouse** |
 | T-18 Collaudo | 🟨 in corso | cominciato. Tre attriti già raccolti e corretti il 12 agosto — vedi il task e `09-DIARIO.md` |
 
-**Fase 0 chiusa.** L'app è pubblicata su Netlify, 365 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
+**Fase 0 chiusa.** L'app è pubblicata su Netlify, 393 test verdi. Il giro completo funziona: apri un conto, batti, confermi, incassi o lasci a credito, e il cliente compare nei Crediti.
 
 **Navigazione:** tab bar in basso (04-UX-MOBILE §2) sulle schermate principali, banco compreso. Sulla scheda Crediti, al posto della parola, c'è il credito in giro: era il numero grande della vecchia home e non poteva finire dietro un tocco.
 
@@ -613,13 +613,43 @@ nella griglia e allunga la ricerca a tutti. È la stessa vista letta dal basso.
 
 | Task | Contenuto | Criterio principale |
 |---|---|---|
-| T-30 | Schema magazzino (`02-MODELLO-DATI.md` §5) | `v_giacenze` restituisce le giacenze corrette |
-| T-31 | Anagrafica fornitori e articoli | Si crea un articolo con scorta minima |
-| T-32 | Carichi e rettifiche | Un carico aumenta la giacenza dell'esatta quantità |
-| T-33 | Distinta base prodotto → articolo | Un cappuccino scarica latte e caffè nelle quantità impostate |
-| T-34 | Scarico automatico (disattivabile) | Si può spegnere; da spento le giacenze cambiano solo a mano |
-| T-35 | Alert sotto scorta | Gli articoli sotto scorta compaiono in evidenza |
-| T-36 | Inventario e riconciliazione | Un inventario genera i movimenti di rettifica corretti |
+| T-30 | ✅ Schema magazzino | `0020_magazzino.sql`. **Quantità intere in millesimi, non `numeric`** — vedi sotto |
+| T-31 | ✅ Anagrafica fornitori e articoli | Nome, unità, scorta minima. I fornitori esistono nello schema, l'anagrafica dall'app arriva quando servirà |
+| T-32 | ✅ Carichi, scarti e correzioni | Il segno lo mette il programma, il database lo verifica |
+| T-33 | ✅ Distinta base | Si scrive dal lato dell'articolo: "un cappuccino quanto latte si mangia" si risponde avendo davanti il latte |
+| T-34 | ✅ Scarico automatico disattivabile | **Nasce spento**, e la schermata spiega perché |
+| T-35 | ✅ Alert sotto scorta | In cima, e solo quello che manca davvero |
+| T-36 | ✅ Inventario | Registra la **differenza**, non il contato |
+
+### Le quantità sono interi in millesimi
+
+La bozza in `0006_fase3_magazzino.sql` — mai eseguita — usava `numeric(10,3)`. Dentro Postgres
+sarebbe stato esatto; il problema comincia quando quel numero esce, perché PostgREST lo consegna a
+JavaScript e lì il decimale esatto non esiste.
+
+Un caffè scarica 7 g di grani: duecento caffè al giorno per un mese sono seimila somme, e la
+giacenza comincia a finire con `,00000000004`. Poi la si confronta con l'inventario contato a mano e
+non torna mai. È la stessa ragione per cui il denaro sta in centesimi (DEC-04), e `0006` è stato
+sostituito da `0020` come `0005` lo era stato da `0016`.
+
+### Tre decisioni che vale la pena rileggere
+
+**Il magazzino non può bloccare la cassa.** Il trigger che scarica sta su `righe_conto`: se
+sollevasse un'eccezione farebbe fallire la conferma del conto, e la vendita andrebbe persa con la
+fila davanti. Quindi qualunque errore lì dentro viene ingoiato. Si scopre solo all'inventario — ed è
+il prezzo consapevole di non perdere un caffè.
+
+**Nasce spento.** In un bar il consumo vero non coincide mai con quello teorico. Acceso senza
+inventari periodici produce numeri falsi che sembrano veri, e sui numeri falsi si fanno gli ordini.
+
+**L'inventario registra la differenza.** I movimenti si sommano: scrivere il contato aggiungerebbe
+quella quantità a quella che risultava già. È l'errore facile, e per questo `differenzaInventario`
+è una funzione pura con i test intorno.
+
+### Che cosa non c'è
+
+L'anagrafica dei fornitori **dall'app**: la tabella c'è e gli articoli ci si collegano, ma non c'è
+una schermata per crearli. Serve il giorno in cui i fornitori diventano più di tre.
 
 ---
 

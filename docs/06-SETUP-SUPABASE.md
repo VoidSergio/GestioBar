@@ -112,6 +112,11 @@ Sono tutte idempotenti: rieseguirne una che c'è già non rompe niente.
 | `0017_correzione_scontrino.sql` | correzione della spunta scontrino, riservata al titolare | Scontrini |
 | `0018_report.sql` | **quattro viste, nessuna tabella** | schermata Report |
 | `0019_ruoli.sql` | ruoli, firma automatica delle righe, viste per operatore | Persone, e chi vede cosa |
+| `0020_magazzino.sql` | articoli, movimenti, distinta base, `v_giacenze` | Magazzino |
+
+`0006_fase3_magazzino.sql` **non si esegue**: è la vecchia bozza del magazzino, sostituita da
+`0020`. Il file resta nel repository con dentro la spiegazione, perché è citato qui sopra e in
+`05-ROADMAP.md`.
 
 **`0018` è quella nuova.** Finché non viene eseguita, la schermata Report dice che non riesce a
 leggere: non rompe nient'altro, perché non tocca nessuna tabella e nessuna schermata esistente.

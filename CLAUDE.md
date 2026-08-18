@@ -11,7 +11,7 @@ Gestionale per un bar, mobile-first, in italiano. Serve a sapere con certezza **
 
 Stack: Next.js 16 (App Router, Turbopack) + TypeScript strict + Supabase + TanStack Query + Tailwind 4.
 
-**Stato:** Fase 0 chiusa, app pubblicata su Netlify. Fatti T-06 (accesso), T-07 (cache offline), T-08 (clienti), T-09 (coda), T-10 (griglia), T-11 (apertura conto), T-12 (righe), T-13 (chiusura conto), T-14 (scheda cliente), T-15 (crediti), T-16 (listino), T-17 (PWA), più **T-20 e T-22** (chiusura di turno) anticipati dalla Fase 2 — il perché è scritto in `05-ROADMAP.md`. 63 prodotti a catalogo, 365 test verdi. Il giro completo funziona. **T-18 è cominciato**: le prime tre correzioni dal banco sono in `09-DIARIO.md` alla data del 12 agosto.
+**Stato:** Fase 0 chiusa, app pubblicata su Netlify. Fatti T-06 (accesso), T-07 (cache offline), T-08 (clienti), T-09 (coda), T-10 (griglia), T-11 (apertura conto), T-12 (righe), T-13 (chiusura conto), T-14 (scheda cliente), T-15 (crediti), T-16 (listino), T-17 (PWA), più **T-20 e T-22** (chiusura di turno) anticipati dalla Fase 2 — il perché è scritto in `05-ROADMAP.md`. 63 prodotti a catalogo, 393 test verdi. Il giro completo funziona. **T-18 è cominciato**: le prime tre correzioni dal banco sono in `09-DIARIO.md` alla data del 12 agosto.
 
 **La schermata di apertura è la griglia prodotti**, non l'elenco dei conti. L'app tiene sempre pronto un conto al banco (`useBanco` in `lib/hooks/use-bozze.ts`): aperta l'app, il primo tocco è il prodotto. Il cliente si chiede alla fine, e solo se il conto resta a debito. I conti aperti stanno nella striscia in cima. Il perché sta in `04-UX-MOBILE.md` §3 — non è un dettaglio estetico, è il vincolo dei tap misurato dal punto giusto.
 
@@ -24,6 +24,8 @@ Stack: Next.js 16 (App Router, Turbopack) + TypeScript strict + Supabase + TanSt
 **Nei report gli storni si tolgono da soli.** Una riga stornata ha `quantita` negativa e uno storno di pagamento ha `importo_cent` negativo: `sum()` è già netto. **Mai `where storno_di is null`** in una vista di report — toglierebbe lo storno lasciando dentro la riga sbagliata, con un risultato che sembra giusto. E `venduto − incassato` **non è un ammanco**: è di quanto è cresciuto il credito in giro (`02-MODELLO-DATI.md` §4.3).
 
 **I ruoli si difendono nel database, non nell'interfaccia.** Nascondere un pulsante non è vietare: fino a `0019_ruoli.sql` un barista poteva promuoversi titolare con una riga di SQL e la chiave anon. Le regole stanno in `proteggi_profilo()`; nessuno cambia il proprio ruolo e l'ultimo titolare attivo non si retrocede. **Le policy RLS non sono verificabili con `npm run verifica:migrazioni`** — pglite non ha i ruoli di Supabase: si provano con le query di `06-SETUP-SUPABASE.md` §5.2, sul progetto vero.
+
+**Le quantità di magazzino sono interi in millesimi**, per la stessa ragione del denaro: `numeric` esce da PostgREST e diventa un decimale in virgola mobile, e seimila somme al mese lo fanno derivare finché l'inventario non torna più. `1250` è 1,250 kg; le funzioni sono in `lib/dominio/magazzino.ts` e non dividono mai. **Lo scarico automatico non può bloccare la cassa**: il trigger su `righe_conto` ingoia qualunque errore, perché una vendita persa è peggio di una giacenza sbagliata (`02-MODELLO-DATI.md` §5). **L'inventario registra la differenza, non il contato**: i movimenti si sommano.
 
 **Un conto confermato nasce sempre `chiuso`**, anche a credito: `stato` dice se lo stai ancora battendo, non se è stato pagato. Il debito vive in `v_saldo_clienti`.
 

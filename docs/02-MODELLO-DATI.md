@@ -834,75 +834,85 @@ subito.
 
 ## 5. SQL — Fase 3 (magazzino)
 
-> Da eseguire solo dopo che la Fase 2 è stabile.
+Lo schema vero è `0020_magazzino.sql`. La bozza che stava qui — e in
+`0006_fase3_magazzino.sql`, mai eseguito — teneva le quantità in
+`numeric(10,3)`, ed è stata riscritta.
 
-```sql
-create table fornitori (
-  id        uuid primary key default gen_random_uuid(),
-  nome      text not null,
-  telefono  text,
-  email     text,
-  note      text,
-  attivo    boolean not null default true,
-  creato_il timestamptz not null default now()
-);
+### Le quantità sono interi in millesimi
 
-create table articoli (
-  id              uuid primary key default gen_random_uuid(),
-  nome            text not null,
-  unita           text not null default 'pz'
-                  check (unita in ('pz', 'kg', 'l', 'conf')),
-  scorta_minima   numeric(10,3) not null default 0,
-  fornitore_id    uuid references fornitori(id),
-  costo_ultimo_cent integer,
-  attivo          boolean not null default true,
-  creato_il       timestamptz not null default now()
-);
+Dentro Postgres `numeric` sarebbe stato esatto. Il problema comincia quando quel numero **esce**:
+PostgREST lo consegna a JavaScript, dove il decimale esatto non esiste — 0,1 + 0,2 non fa 0,3.
 
-create table movimenti_magazzino (
-  id           uuid primary key default gen_random_uuid(),
-  articolo_id  uuid not null references articoli(id),
-  tipo         text not null check (tipo in ('carico', 'scarico', 'rettifica', 'scarto')),
-  quantita     numeric(10,3) not null check (quantita <> 0),
-  costo_unitario_cent integer,
-  causale      text,
-  riga_conto_id uuid references righe_conto(id),
-  creato_il    timestamptz not null default now(),
-  creato_da    uuid references profili(id),
-  op_id        uuid not null unique
-);
+Un caffè scarica 7 g di grani. Duecento caffè al giorno per un mese sono seimila somme, e la
+giacenza comincia a finire con `,00000000004`. Poi la si confronta con l'inventario contato a mano
+e non torna mai, e nessuno capisce perché.
 
-create index idx_movimenti_articolo on movimenti_magazzino (articolo_id, creato_il desc);
+È la stessa ragione per cui il denaro sta in centesimi interi (DEC-04). L'unità è il **millesimo**:
+un grammo, un millilitro, un millesimo di pezzo. `1250` vuol dire 1,250 kg. Tre decimali bastano —
+sotto il grammo, in un bar, non c'è niente da pesare.
 
--- distinta base: quanto articolo consuma un prodotto venduto
-create table composizioni (
-  prodotto_id uuid not null references prodotti(id) on delete cascade,
-  articolo_id uuid not null references articoli(id) on delete cascade,
-  quantita    numeric(10,3) not null check (quantita > 0),
-  primary key (prodotto_id, articolo_id)
-);
-```
+Le funzioni stanno in `lib/dominio/magazzino.ts` e **non dividono mai**: la virgola si mette
+tagliando le ultime tre cifre dell'intero, come fa `centesimiInCampo` con i centesimi.
 
-```sql
-create or replace view v_giacenze
-with (security_invoker = on) as
-select
-  a.id,
-  a.nome,
-  a.unita,
-  a.scorta_minima,
-  a.fornitore_id,
-  coalesce(sum(m.quantita), 0) as giacenza,
-  coalesce(sum(m.quantita), 0) <= a.scorta_minima as sotto_scorta
-from articoli a
-left join movimenti_magazzino m on m.articolo_id = a.id
-where a.attivo
-group by a.id, a.nome, a.unita, a.scorta_minima, a.fornitore_id;
-```
+### Le tabelle
 
-**Convenzione dei segni:** i carichi hanno quantità positiva, gli scarichi negativa. La giacenza è la somma. Come per il saldo dei clienti, non esiste un contatore da aggiornare — quindi non esiste il modo di sbagliarlo (DEC-02).
+| Tabella | Che cos'è |
+|---|---|
+| `fornitori` | da chi si compra |
+| `articoli` | **quello che si compra**: il caffè in grani, il latte, i bicchieri |
+| `movimenti_magazzino` | carichi, scarichi, scarti, rettifiche |
+| `composizioni` | la distinta base: quanto articolo consuma un prodotto venduto |
 
-Lo **scarico automatico** alla vendita è opzionale e va attivato consapevolmente: in un bar il consumo reale diverge sempre da quello teorico (sfridi, omaggi, errori), quindi le giacenze automatiche vanno riconciliate con inventari periodici tramite movimenti di tipo `rettifica`. Un magazzino automatico mai riconciliato produce numeri falsi che sembrano veri, che è peggio di non avere il magazzino.
+Un articolo non è un prodotto: il prodotto è quello che si vende, l'articolo quello che si compra.
+Il legame è `composizioni` — un cappuccino: 7 g di grani e 120 ml di latte.
+
+### La giacenza è la somma dei movimenti
+
+Come il saldo dei clienti: **non esiste un contatore** (DEC-02), quindi non esiste il modo di
+sbagliarlo, di disallinearlo o di doverlo ricostruire. `v_giacenze` somma e basta.
+
+I segni sono vincolati al tipo (`segno_coerente_col_tipo`): un carico è positivo, uno scarico e uno
+scarto sono negativi, e solo la rettifica può andare in tutte e due le direzioni — perché
+l'inventario trova più o meno di quello che risultava. Un "carico" con quantità negativa scritto per
+errore sparirebbe dentro una somma e non si troverebbe più.
+
+I movimenti sono **immutabili** come tutti gli altri (DEC-03): un carico sbagliato si corregge con
+una rettifica, non riscrivendolo. La storia è l'unica cosa che permette di capire perché
+l'inventario non torna.
+
+### Lo scarico automatico non può bloccare la cassa
+
+Il trigger `scarica_magazzino()` sta su `righe_conto`, cioè sulla strada di ogni caffè battuto. Se
+sollevasse un'eccezione — una distinta base scritta male, un articolo cancellato — farebbe fallire
+l'inserimento della riga e con essa **l'intera conferma del conto**: la vendita andrebbe persa con
+la fila davanti.
+
+Quindi qualunque cosa vada storta lì dentro viene ingoiata. È scomodo e va detto: un errore
+silenzioso nel magazzino si scopre solo all'inventario. Ma fra un numero di magazzino sbagliato e
+un caffè non registrato non c'è partita.
+
+È anche il motivo per cui **l'inventario non è una funzione in più**: è la sola cosa che rimette in
+pari quello che lì può essere sfuggito.
+
+### Perché nasce spento
+
+`impostazioni.scarico_automatico` vale `'no'` di partenza. In un bar il consumo reale diverge sempre
+da quello teorico: sfridi, omaggi, il caffè venuto male, la dose a occhio. Un magazzino automatico
+mai riconciliato produce numeri falsi **che sembrano veri**, ed è peggio che non avere il magazzino
+— perché sui numeri falsi si fanno gli ordini.
+
+### L'inventario registra la differenza, non il contato
+
+I movimenti si sommano. Un "contato 1 kg" scritto come movimento aggiungerebbe un chilo a quello che
+risultava già. La differenza la calcola `differenzaInventario` in `lib/dominio/magazzino.ts`, che ha
+i test intorno proprio perché è l'errore facile da fare.
+
+### Chi può fare cosa
+
+Anagrafiche e distinta base le cambia il **titolare**: sono decisioni di acquisto e di costo. I
+movimenti invece li inserisce **anche un barista** — la bottiglia rotta la rompe chi sta al banco, e
+se registrarla richiedesse il titolare non la registrerebbe nessuno. Nessuno li modifica o li
+cancella, titolare compreso.
 
 ---
 
