@@ -398,3 +398,92 @@ nel fatto che il tasto apriva un pannello, bastava una strada nuova — e la str
 aggiunta lo stesso commit.
 
 ---
+
+## 13 agosto 2026 — la pagina del "non c'è rete" stava dietro al controllo della rete
+
+**Cosa si è visto.** Dal banco: *«ogni tanto mi dice impossibile connettersi e mi dà errore»*, con
+la connessione funzionante. Quel messaggio non esiste da nessuna parte nel progetto: è la pagina
+di errore del browser, quella con il pulsante Ricarica e nient'altro.
+
+**Perché.** Tre cose, e la prima è la madre delle altre.
+
+Il `matcher` di `proxy.ts` elencava che cosa **non** deve passare dal controllo di accesso: file
+statici, icone, immagini. Non elencava `/sw.js` né `/offline`.
+
+Quindi il browser, quando chiedeva `/sw.js` per registrare il service worker, passava dal
+controllo — e da scollegati quel controllo risponde con un rimando a `/login`. Il browser riceveva
+una pagina HTML dove si aspettava un file JavaScript e **si rifiutava di registrare il service
+worker**. Niente service worker: niente avvio senza rete, niente pagina di ripiego, e ogni
+singhiozzo della linea diretto alla pagina di errore del browser.
+
+`/offline` aveva lo stesso problema con un giro in più. Il service worker la mette in cache
+all'installazione con `cache.addAll`, che è **atomica**: se una sola risorsa non si può conservare,
+l'installazione fallisce del tutto. E quella richiesta, passando dal controllo, poteva tornare come
+rimando — che il Cache API rifiuta di conservare. Una riga sbagliata, e il service worker non
+entrava in servizio nemmeno quando riusciva a registrarsi.
+
+La terza è indipendente e spiega l'«ogni tanto»: `dallaRetePoiCache` faceva `await fetch(richiesta)`
+**senza scadenza**. Il caso vero del wifi di un bar non è "la rete non c'è" — quello il browser lo
+sa dire — è "la rete c'è e non passa niente". Lì `fetch` non fallisce: resta appeso. `navigator.onLine`
+continua a dire online, lo schermo resta bianco, e dopo mezzo minuto si arrende il browser.
+
+**Cosa si è fatto.** `sw.js` e `offline` fuori dal `matcher`, e `/offline` fra le rotte pubbliche
+come seconda serratura. Le due regole sono state spostate in `lib/dominio/rotte.ts`, con i test:
+stavano dentro un'espressione regolare in fondo a un file di configurazione, cioè nel posto dove
+nessuno le guarda e niente le verifica.
+
+L'installazione del service worker non è più atomica: ogni risorsa si mette in cache per conto suo
+e chi non ce la fa non porta giù le altre. La rete ha una scadenza di tre secondi e mezzo, dopo la
+quale si serve la copia in memoria — se c'è; se non c'è si aspetta, perché lì la rete è l'unica
+strada. E l'ultima spiaggia non è più un `throw` ma una risposta vera, in italiano, che dice la
+cosa che serve sapere: i conti battuti sono al sicuro sul telefono.
+
+**La regola.** Una pagina che esiste per funzionare **quando il server non risponde** non può
+dipendere da una risposta del server. Detta così sembra ovvia; scritta come una voce mancante in
+una lista di esclusioni, dentro `export const config`, non se n'era accorto nessuno per dieci
+giorni.
+
+E la seconda: **`fetch` non ha una scadenza.** Ogni volta che si aspetta la rete davanti a un
+utente, la scadenza va messa a mano — altrimenti il caso peggiore non è l'errore, è l'attesa
+infinita, che è peggio dell'errore perché non si può nemmeno raccontare.
+
+---
+
+## 13 agosto 2026 — un divieto messo nel posto sbagliato bloccava Supabase
+
+**Cosa si è visto.** Provando a cancellare da Supabase un utente creato per sbaglio:
+`Failed to delete selected users: Database error deleting user`. Nessuna via d'uscita dalla
+dashboard.
+
+**Perché.** Era il trigger `blocca_cancellazione_profilo`, aggiunto da me il giorno prima in
+`0019_ruoli.sql`, con un ragionamento giusto: un profilo cancellato lascia orfane le righe che ha
+battuto, quindi si disattiva e non si cancella.
+
+Il ragionamento reggeva. Il posto no. `profili.id` è `references auth.users(id) on delete cascade`:
+cancellare un utente dalla dashboard fa scendere una cascata su `profili`, che sveglia il trigger,
+che solleva un'eccezione, che fa fallire tutto. Il divieto non colpiva solo chi voleva cancellare
+la storia di un dipendente — colpiva **qualunque** cancellazione, compresa quella di un account
+creato cinque minuti prima e mai usato.
+
+E soprattutto: la protezione vera **esisteva già e non l'avevo vista.** `conti`, `righe_conto`,
+`pagamenti` e `clienti` hanno tutte `creato_da uuid references profili(id)` senza `on delete`,
+cioè con il comportamento predefinito, che è rifiutare. Un profilo che ha battuto anche una sola
+riga era già intoccabile. Il trigger non aggiungeva niente se non il caso inutile.
+
+**Cosa si è fatto.** `0021_cancellazione_profilo.sql` lo toglie. La regola che conta — chi ha
+lavorato si disattiva, non si cancella — la fa rispettare il vincolo di chiave esterna, cioè
+esattamente il posto in cui i dati si difendono da soli. Due controlli nuovi in
+`verifica:migrazioni`: chi ha battuto qualcosa non si cancella, chi non ha mai fatto niente sì.
+
+**La regola.** Prima di aggiungere un divieto, **cercare se il divieto c'è già**. Le chiavi
+esterne sono divieti, e lo sono nel punto giusto: dove il dato viene toccato, non sull'anagrafica
+che gli sta accanto. Un divieto in più non è mai gratis — questo ha bloccato una strada di
+riparazione che nessuno aveva previsto di dover percorrere.
+
+**Il seguito.** Nello stesso giro è emerso che il consiglio dato il 12 agosto — "invita il collega
+da Supabase con Invite user" — era sbagliato: l'app non ha né la rotta che scambia il codice
+dell'invito né la schermata per scegliere la password, quindi il link non ha dove atterrare.
+`06-SETUP-SUPABASE.md` §5.3 adesso dice di usare **Create new user** con la password decisa dal
+titolare, che funziona senza codice nuovo.
+
+---

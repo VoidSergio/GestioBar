@@ -113,6 +113,7 @@ Sono tutte idempotenti: rieseguirne una che c'è già non rompe niente.
 | `0018_report.sql` | **quattro viste, nessuna tabella** | schermata Report |
 | `0019_ruoli.sql` | ruoli, firma automatica delle righe, viste per operatore | Persone, e chi vede cosa |
 | `0020_magazzino.sql` | articoli, movimenti, distinta base, `v_giacenze` | Magazzino |
+| `0021_cancellazione_profilo.sql` | **correzione**: toglie un divieto che impediva di cancellare un utente da Supabase | rimediare a un account creato per sbaglio |
 
 `0006_fase3_magazzino.sql` **non si esegue**: è la vecchia bozza del magazzino, sostituita da
 `0020`. Il file resta nel repository con dentro la spiegazione, perché è citato qui sopra e in
@@ -235,18 +236,53 @@ proteggere, non solo un numero da non sbandierare.
 
 ## 5.3 Aggiungere un collega
 
-Gli account **si creano da qui, non dall'app**: crearli richiede la chiave `service_role`, quella
-che scavalca ogni permesso, e tenerla fra le variabili d'ambiente del sito vorrebbe dire averla in
-un posto in più tutti i giorni per un'operazione che capita due volte l'anno.
+> **Non usare "Invite user".** L'app non sa completare un invito, e il link
+> risulta rotto. Il perché è qui sotto.
 
-1. **Authentication → Users → Invite user**, e metti la sua mail.
-2. Riceve un invito e sceglie la password.
-3. Alla prima entrata il trigger `crea_profilo_utente` gli crea il profilo. **Il primo utente in
-   assoluto nasce titolare, tutti gli altri nascono baristi.**
-4. Se deve essere titolare, glielo cambi dall'app: **Altro → Persone**.
+Gli account si creano dalla dashboard e non dall'app: crearli richiede la chiave
+`service_role`, quella che scavalca ogni permesso, e tenerla fra le variabili
+d'ambiente del sito vorrebbe dire averla in un posto in più tutti i giorni per
+un'operazione che capita due volte l'anno.
 
-Quando qualcuno se ne va, **non cancellare l'utente**: disattivalo da Persone. Cancellarlo
-lascerebbe orfane tutte le righe che ha battuto, e il database lo impedisce.
+### Come si fa
+
+1. **Authentication → Users → Add user → Create new user.**
+2. Metti la sua mail e **scegli tu una password** provvisoria.
+3. Spunta **Auto Confirm User**. Senza, resta in attesa di una conferma che non
+   arriverà mai da nessuna parte.
+4. Le dai mail e password a voce. Entra dalla schermata di accesso normale.
+5. Il profilo si crea da solo alla prima entrata, e nasce **barista**. Il primo
+   utente in assoluto — tu — è l'unico che nasce titolare.
+6. Se deve essere titolare, glielo cambi dall'app: **Altro → Persone**.
+
+### Perché "Invite user" non funziona
+
+Il link di invito rimanda al **Site URL** configurato in Supabase
+(*Authentication → URL Configuration*). Se quello è rimasto `http://localhost:3000`
+— il valore predefinito — il link porta a un indirizzo che esiste solo sul
+computer di chi sviluppa: sul telefono di chi lo apre risulta irraggiungibile,
+con la connessione perfettamente funzionante.
+
+Ma anche con il Site URL giusto **non basterebbe**. Un invito consegna un codice
+da scambiare con una sessione, e poi chiede alla persona di scegliersi una
+password. L'app non ha né la rotta che fa lo scambio né la schermata della
+password: sa fare solo mail più password. Finché non ci sono, l'invito non ha
+dove atterrare.
+
+È scritto qui perché è un errore già fatto: il consiglio dato il 12 agosto era
+"invita da Supabase", ed era sbagliato.
+
+### Quando qualcuno se ne va
+
+**Disattivalo da Altro → Persone. Non cancellarlo.** Chi ha battuto anche una
+sola riga non è cancellabile: il database rifiuta, perché quelle righe
+resterebbero senza autore. Sulla dashboard di Supabase l'errore si presenta come
+`Database error deleting user`, che non spiega niente — ma è il caso giusto in
+cui fallire.
+
+Un utente creato per sbaglio, che non ha mai battuto niente, si cancella senza
+problemi. Fino alla migrazione `0021` non si cancellava nemmeno quello: era un
+divieto messo nel posto sbagliato, e il racconto sta in `09-DIARIO.md`.
 
 ---
 
