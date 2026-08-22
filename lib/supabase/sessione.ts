@@ -2,9 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from './tipi';
 import { configurazionePresente, leggiConfigurazione } from './configurazione';
-
-/** Rotte raggiungibili senza aver fatto l'accesso. */
-const PUBBLICHE = ['/login'];
+import { rottaPubblica } from '@/lib/dominio/rotte';
 
 /**
  * Rinnova la sessione a ogni richiesta e protegge le rotte.
@@ -48,7 +46,9 @@ export async function aggiornaSessione(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const percorso = request.nextUrl.pathname;
-  const ePubblica = PUBBLICHE.some((p) => percorso.startsWith(p));
+  // La regola sta in `lib/dominio/rotte.ts`, con i test: il `matcher` di
+  // `proxy.ts` esclude già `/offline` a monte, questa è la seconda serratura.
+  const ePubblica = rottaPubblica(percorso);
 
   if (!user && !ePubblica) {
     const destinazione = request.nextUrl.clone();
