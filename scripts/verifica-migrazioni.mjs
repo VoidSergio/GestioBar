@@ -413,10 +413,26 @@ eq(
 await db.exec(`update profili set attivo = true where id = '${utente.id}'`);
 await db.exec(`update profili set ruolo = 'barista' where id = '${collega.id}'`);
 
+// Il divieto assoluto di 0019 è stato tolto da 0021: bloccava anche la
+// cascata da auth.users, e quindi la cancellazione di un utente creato per
+// sbaglio dalla dashboard di Supabase. La protezione vera è il vincolo di
+// chiave esterna su `creato_da`, che c'era già.
+await db.exec(`insert into conti (op_id) values (gen_random_uuid())`);
 await deveFallire(
-  'un profilo non si cancella: si perderebbe chi ha battuto cosa',
-  `delete from profili where id = '${collega.id}'`,
-  'non si cancella'
+  'chi ha battuto qualcosa non si cancella: lo vieta la chiave esterna',
+  `delete from profili where id = '${utente.id}'`,
+  'viola',
+);
+eq(
+  'chi non ha mai fatto niente si cancella: serve a rimediare a un invito sbagliato',
+  0,
+  await (async () => {
+    const usaEGetta = await uno(
+      "insert into auth.users (email) values ('sbaglio@bar.it') returning id"
+    );
+    await db.exec(`delete from profili where id = '${usaEGetta.id}'`);
+    return (await uno(`select count(*) n from profili where id = '${usaEGetta.id}'`)).n;
+  })()
 );
 
 console.log('\nCHI HA BATTUTO COSA (T-42)');
